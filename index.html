@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Maikey Adventure</title>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="handheld-console">
+        
+        <div class="d-pad-area">
+            <div class="d-pad">
+                <div id="btnUp" class="pad-btn up">▲</div>
+                <div id="btnLeft" class="pad-btn left">◀</div>
+                <div id="btnRight" class="pad-btn right">▶</div>
+                <div id="btnDown" class="pad-btn down">▼</div>
+            </div>
+        </div>
+
+        <div class="screen-area">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+
+        <div class="action-area">
+            <div id="btnB" class="action-btn b-btn">B</div>
+            <div id="btnA" class="action-btn a-btn">A</div>
+        </div>
+
+    </div>
+    
+    <script src="player-data.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
