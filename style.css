@@ -69,34 +69,36 @@ canvas {
 }
 
 /* 🕹️ 左側：十字キーエリア（画面の左端に浮かせる！） */
+/* 🕹️ 左側：十字キーエリア（長方形が綺麗に収まるサイズに調整❤️） */
 .d-pad-area {
     position: absolute;
-    left: 3vw; 
+    left: 4vw; 
     top: 0;
-    height: 100vh; /* 💡 100vh にして display: flex と align-items: center で画面の真ん中に浮かせるわ！ */
+    height: 100vh; 
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 195px; /* 💡 めり込んだ後の全体の横幅（120 + 75 = 195px） */
+    width: 165px; /* 💡 綺麗に合体した後の全体の横幅よ */
+    height: 165px;
     z-index: 10; 
 }
 
-/* ✙ 十字キーの形（土台のサイズよ❤️） */
+/* ✙ 十字キーの土台 */
 .d-pad {
     position: relative;
-    width: 195px;  
-    height: 195px;
+    width: 165px;  
+    height: 165px;
 }
 
-/* ボタン共通設定（あきくんの理想：しっかりデカい75pxサイズ！） */
-.pad-btn {
+/* 🧱 【上・下ボタン】あきくん指定の「縦長」の長方形！❤️ */
+.pad-btn.up, .pad-btn.down {
     position: absolute;
-    width: 75px;
-    height: 75px;
+    width: 50px;   /* 💡 横幅はスリムに */
+    height: 65px;  /* 💡 縦を長ーーく！ */
     background: rgba(34, 34, 34, 0.85); 
     color: #fff;
     border: 2px solid #555; 
-    border-radius: 8px; /* 巨大化に合わせて角丸も調整⭐ */
+    border-radius: 6px; 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -105,15 +107,36 @@ canvas {
     user-select: none;
     -webkit-user-select: none;
 }
+
+/* 🧱 【左・右ボタン】あきくん指定の「横長」の長方形！❤️ */
+.pad-btn.left, .pad-btn.right {
+    position: absolute;
+    width: 65px;   /* 💡 横を長ーーく！ */
+    height: 50px;  /* 💡 縦幅はスリムに */
+    background: rgba(34, 34, 34, 0.85); 
+    color: #fff;
+    border: 2px solid #555; 
+    border-radius: 6px; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px; 
+    font-weight: bold;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ボタンを押した時の色 */
 .pad-btn:active { background: #111; }
 
-/* 🧱 【超次元のめり込みマジック❤️】
-   本来は 75px ずつ離すところを、あえて「60px」しか離さないことで、
-   ボタンの四隅が真ん中で15pxずつ「極端に重なり合う」ように設計したわ！ */
-.pad-btn.up    { top: 0;    left: 60px; }
-.pad-btn.left  { top: 60px; left: 0; }
-.pad-btn.right { top: 60px; left: 120px; }
-.pad-btn.down  { top: 120px; left: 60px; }
+
+/* 🎯 【黄金のパズル配置】
+   長方形のパーツたちが絶対に重ならず、何のボタンかもハッキリ見えて、
+   なおかつド真ん中に「キュッと引き締まった小さな□」を作る完璧な座標よ！ */
+.pad-btn.up    { top: 0;    left: 57px; }
+.pad-btn.left  { top: 57px; left: 0; }
+.pad-btn.right { top: 57px; left: 100px; }
+.pad-btn.down  { top: 100px; left: 57px; }
 
 /* 🅰️🅱️ 右側：アクションボタンエリア（あきくんの80px大サイズ！） */
 .action-area {
