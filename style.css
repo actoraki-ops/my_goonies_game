@@ -71,45 +71,44 @@ canvas {
 /* 🕹️ 左側：十字キーエリア（画面の左端に浮かせる！） */
 .d-pad-area {
     position: absolute;
-    left: 1vw; /* 💡 画面の左端にしっかり寄せる */
-    bottom: 5vh; /* 💡 下側に配置して、スマホを持った親指が自然に届く位置に！ */
-    width: 270px; /* 💡 90px × 3マス分 ＝ 270px */
-    height: 270px;
+    left: 4vw; /* 💡 親指が届きやすいように少し内側に寄せる */
+    bottom: 8vh; /* 💡 下から少し浮かせて持ちやすく！ */
+    width: 150px; /* 💡 50px × 3マス ＝ 150px */
+    height: 150px;
     z-index: 10; 
 }
 
-/* ✙ 十字キーの形（3マスの正方形の土台：90px × 3 ＝ 270px） */
+/* ✙ 十字キーの形（3マスの正方形の土台よ：50px × 3 ＝ 150px） */
 .d-pad {
     position: relative;
-    width: 270px;  
-    height: 270px;
+    width: 150px;  
+    height: 150px;
 }
 
-/* ボタン共通設定（あきくんのリクエストに応えて90pxの特大サイズ！❤️） */
+/* ボタン共通設定（ファミコン風の隙間ゼロ合体仕様❤️） */
 .pad-btn {
     position: absolute;
-    width: 90px;
-    height: 90px;
-    background: rgba(51, 51, 51, 0.75); /* 💡 画面が見やすいようにほんの少しだけ透明度アップ */
+    width: 50px;
+    height: 50px;
+    background: rgba(34, 34, 34, 0.85); /* 💡 少し黒を濃くして本物のプラスチック感を出したわ */
     color: #fff;
-    border: 3px solid #666; /* 💡 太くしてレトロ感をアップ */
-    border-radius: 12px; /* 💡 大きさに合わせて角丸も滑らかに⭐ */
+    border: 1px solid #555; /* 💡 境界線を細くして、ピッタリくっついて見えるようにするの */
+    border-radius: 4px; /* 💡 カチッとしたレトロな角丸 */
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 24px; /* 💡 文字もドカンと大きく！ */
+    font-size: 16px; 
     font-weight: bold;
     user-select: none;
     -webkit-user-select: none;
 }
-.pad-btn:active { background: #444; }
+.pad-btn:active { background: #111; }
 
-/* 🧱 90pxの巨大ボタンが1ミリの隙間もなくカチッと十字型に合体する聖なる数値よ！ */
-.pad-btn.up    { top: 0;    left: 90px; }
-.pad-btn.left  { top: 90px; left: 0; }
-.pad-btn.right { top: 90px; left: 180px; }
-.pad-btn.down  { top: 180px; left: 90px; }
-
+/* 🧱 【真ん中の隙間が完全に消滅する魔法の数値】50の倍数で完璧にドッキングよ！ */
+.pad-btn.up    { top: 0;    left: 50px; }
+.pad-btn.left  { top: 50px; left: 0; }
+.pad-btn.right { top: 50px; left: 100px; }
+.pad-btn.down  { top: 100px; left: 50px; }
 
 /* 🅰️🅱️ 右側：アクションボタンエリア（あきくんの80px大サイズ！） */
 .action-area {
