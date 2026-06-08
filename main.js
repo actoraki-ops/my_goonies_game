@@ -91,6 +91,7 @@ let timerFrameCount = 0;
 let score = 0;
 
 
+
 // 🌟 救出メッセージ用のオブジェクト
 let goonieText = {
     x: 0, y: 0, alpha: 0, // 不透明度（1.0でクッキリ、0で消える）
@@ -1009,8 +1010,32 @@ function performKick() {
     }
 }
 
+
+let lastTime = 0;
+const fpsInterval = 1000 / 60; // 1秒（1000ms）÷ 60回 ＝ 約16.67ms
+
 //------メインループ------
-function update() {
+function update(currentTime) {
+    // 🔄 ループ自体は常に回し続けるわよ！
+    requestAnimationFrame(update);
+
+    // 💡 最初の1回目の時間を記録するわ
+    if (!lastTime) {
+        lastTime = currentTime;
+    }
+
+    // ⏱️ 前回の描画からどれくらい時間が経ったか計算するの
+    const elapsed = currentTime - lastTime;
+
+    // 🛑 もし1秒間に60回のペース（約16.67ms）に達していなければ、
+    // ゲームの処理を進めずにここでストップ（スルー）させるわ！
+    if (elapsed < fpsInterval) {
+        return; 
+    }
+
+    // 🎯 16.67msが経過した（＝60FPSのタイミングになった）ので、
+    // 次のブレーキのために、余った時間を微調整しながら lastTime を更新するわ！
+    lastTime = currentTime - (elapsed % fpsInterval);
 
     if (isTitleScreen) {
         handleTitleInput(); 
@@ -1260,11 +1285,11 @@ function handleInput() {
 
     
     // 2. 入力状態の定義（コントローラーの感度を 0.3 に調整 ）
-let isLeftPressed  = keys['ArrowLeft']  || (gp && gp.axes[0] < -0.5);
+    let isLeftPressed  = keys['ArrowLeft']  || (gp && gp.axes[0] < -0.5);
     let isRightPressed = keys['ArrowRight'] || (gp && gp.axes[0] > 0.5);
     let isDownPressed  = keys['ArrowDown']  || (gp && gp.axes[1] > 0.5);
 
-    // 🪜 【あきくんのこだわり❤️】上は「はしごを登るだけ」！ジャンプはさせないわ
+    // 🪜 上は「はしごを登るだけ」！ジャンプはさせない
     let isUpPressed    = keys['ArrowUp']    || (gp && gp.axes[1] < -0.5);
 
     // 🅰️ 【Aボタン】ジャンプ専用キー！キーボードの「X」か「x」でダイレクトに跳ぶの❤️
@@ -1384,14 +1409,14 @@ let isLeftPressed  = keys['ArrowLeft']  || (gp && gp.axes[0] < -0.5);
 
 
         // 「もし今、はしごを掴んでいない」かつ
-        // 「(スペース/ボタンが押された) または (はしごがない場所で上が押された)」時だけジャンプさせるわ！
-      const isWantsToJump = isJumpButtonPressed || (keys['ArrowUp'] && !player.isOnLadder);
+        // 「(スペース/ボタンが押された) 時だけジャンプ！
+        const isWantsToJump = isJumpButtonPressed;
 
         if (isWantsToJump && !player.isJumping) {
             player.vy = JUMP_POWER;
             player.isJumping = true;
             jumpSE.currentTime = 0;    
-            jumpSE.play();
+            jumpSE.play().catch(()=>{}); // スマホ用安全お守り❤️
         }
     }
 
