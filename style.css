@@ -71,85 +71,116 @@ canvas {
 /* 🕹️ 左側：十字キーエリア（画面の左端に浮かせる！） */
 .d-pad-area {
     position: absolute;
-    left: 2vw; /* 💡 左端からちょっと内側 */
-    top: 0;
-    width: 120px;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10; /* 💡 キャンバスより手前に浮かせるわ❤️ */
+    left: 1vw; /* 💡 画面の左端にしっかり寄せる */
+    bottom: 5vh; /* 💡 下側に配置して、スマホを持った親指が自然に届く位置に！ */
+    width: 270px; /* 💡 90px × 3マス分 ＝ 270px */
+    height: 270px;
+    z-index: 10; 
 }
 
-/* ✙ 十字キーの形（サイズはそのまま❤️） */
+/* ✙ 十字キーの形（3マスの正方形の土台：90px × 3 ＝ 270px） */
 .d-pad {
     position: relative;
-    width: 120px;
-    height: 120px;
+    width: 270px;  
+    height: 270px;
 }
 
-/* ボタン共通設定 */
+/* ボタン共通設定（あきくんのリクエストに応えて90pxの特大サイズ！❤️） */
 .pad-btn {
     position: absolute;
-    width: 40px;
-    height: 40px;
-    background: rgba(51, 51, 51, 0.8); /* 💡 少しだけ透明にしてゲーム画面が透けるようにするわ❤️ */
+    width: 90px;
+    height: 90px;
+    background: rgba(51, 51, 51, 0.75); /* 💡 画面が見やすいようにほんの少しだけ透明度アップ */
     color: #fff;
-    border: 2px solid #555;
-    border-radius: 6px;
+    border: 3px solid #666; /* 💡 太くしてレトロ感をアップ */
+    border-radius: 12px; /* 💡 大きさに合わせて角丸も滑らかに⭐ */
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 14px;
+    font-size: 24px; /* 💡 文字もドカンと大きく！ */
     font-weight: bold;
     user-select: none;
     -webkit-user-select: none;
 }
-.pad-btn:active { background: #555; }
+.pad-btn:active { background: #444; }
 
-.pad-btn.up    { top: 0; left: 40px; }
-.pad-btn.left  { top: 40px; left: 0; }
-.pad-btn.right { top: 40px; left: 80px; }
-.pad-btn.down  { top: 80px; left: 40px; }
+/* 🧱 90pxの巨大ボタンが1ミリの隙間もなくカチッと十字型に合体する聖なる数値よ！ */
+.pad-btn.up    { top: 0;    left: 90px; }
+.pad-btn.left  { top: 90px; left: 0; }
+.pad-btn.right { top: 90px; left: 180px; }
+.pad-btn.down  { top: 180px; left: 90px; }
 
 
-/* 🅰️🅱️ 右側：アクションボタンエリア（画面の右端に浮かせる！） */
+/* 🅰️🅱️ 右側：アクションボタンエリア（あきくんの80px大サイズ！） */
 .action-area {
     position: absolute;
-    right: 4vw; /* 💡 右端からちょっと内側 */
+    right: 5vw; 
     top: 0;
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px; 
-    z-index: 10; /* 💡 キャンバスより手前に浮かせるわ❤️ */
+    gap: 20px; /* 💡 大きなボタン同士がぶつからないように隙間を調整 */
+    z-index: 10; 
 }
 
 .action-btn {
-    width: 55px;
-    height: 55px;
-    background: rgba(163, 29, 29, 0.8); /* 💡 少しだけ透明なファミコンエンジ色❤️ */
+    width: 80px;
+    height: 80px;
+    background: rgba(163, 29, 29, 0.8); 
     color: white;
     border: 3px solid #000;
     border-radius: 50%; 
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 20px;
+    font-size: 26px; /* 💡 80pxに合わせて文字も大きく視認性抜群に！ */
     font-weight: bold;
     font-family: 'Courier New', monospace;
-    box-shadow: 0 4px #5e1111;
+    box-shadow: 0 6px #5e1111; /* 押し込みの立体感アップ❤️ */
     user-select: none;
     -webkit-user-select: none;
 }
 .action-btn:active {
-    transform: translateY(3px);
-    box-shadow: 0 1px #5e1111;
+    transform: translateY(4px);
+    box-shadow: 0 2px #5e1111;
 }
-
 body {
     margin: 0;
     overflow: hidden;
     background-color: #000;
+}
+
+/* 🔒 画面が縦向きの時にゲームを隠すお守りカーテン */
+#orientation-blocker {
+    display: none; /* 💡 基本は非表示 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #111; /* 真っ黒な背景 */
+    color: white;
+    z-index: 9999; /* 💡 誰よりも手前に表示する！ */
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+/* 📱 【超重要】スマホが「縦向き（縦長）」の時だけ、強制的にカーテンを表示する魔法よ！ */
+@media screen and (orientation: portrait) {
+    #orientation-blocker {
+        display: flex; /* 縦向きの時だけ現れるわ❤️ */
+    }
+}
+
+/* 案内文字のデザイン */
+.blocker-message {
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1.6;
+}
+.blocker-message span {
+    font-size: 14px;
+    color: #aaa;
 }
