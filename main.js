@@ -10,6 +10,11 @@ const CONFIG = {
     WORLD_H: 190,
     CAMERA_W: 280, // 画面横サイズ
     CAMERA_H: 225,//　190(ゲーム画面) + 35(UIエリア) 
+
+    // 🎥 【ここを追加！】カメラが実際に「ゲームの世界を覗き込む窓」のサイズよ！
+    // 縦幅を190pxフルではなく、あえて「140px」に狭めることで、画面を縦に拡大したのと同じ効果になるわ！
+    VIEW_W: 120,   // 横の覗き込み幅（まずは等倍の280のままで実験よ）
+    VIEW_H: 140,   // 縦の覗き込み幅（190pxより狭くしたから、上下に50px分のスクロールの余白が生まれるわ！）
 };
 
 
@@ -32,9 +37,31 @@ let textFlashTimer = 0;     // PUSH STARTの点滅用
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// 📄 main.js のキャンバスサイズ設定の場所よ❤️
+
+// 1. 中の計算用のサイズは、一番綺麗に動いていた元の設定（140px）に固定するわ！
 canvas.width = CONFIG.CAMERA_W * CONFIG.SCALE;
-canvas.height = CONFIG.CAMERA_H * CONFIG.SCALE;
+canvas.height = (35 + CONFIG.VIEW_H) * CONFIG.SCALE;
+
+// 🌟 【ここからを上書きしてね！あきくんの画面をドン！と巨大化させるわよ❤️】
+// Canvasの「見た目の大きさ（CSS）」を直接コントロールして、スマホ画面向けに超・巨大化させるの！
+
+// 💡 ここに、スマホの画面で「これくらい大きく表示したい！」という横幅のピクセル数を自由に入れてね！
+// 例えば、今までの2倍の大きさにしたいなら「512」、もっと大迫力にしたいなら「768」や「800」にしてみて！
+const displayWidth = 1000; // 👈 この数字を大きくするだけで、マイキーも床もUIも全員がそのまま巨大化するわ！
+
+const aspectRatio = canvas.height / canvas.width; // 縦横の比率を絶対に崩さないための魔法の計算
+
+// CSSを使って、ブラウザ上で画用紙ごとググーーッと綺麗に拡大するわよ❤️
+canvas.style.width = displayWidth + "px";
+canvas.style.height = Math.floor(displayWidth * aspectRatio) + "px";
+
+// 🔥 【超重要】拡大してもファミコンのドット絵が絶対にぼやけず、クッキリさせる命令よ！
+canvas.style.imageRendering = "pixelated";
+
 ctx.imageSmoothingEnabled = false;
+
+
 
 // 🎵 ゲームのBGM設定
 const bgm = new Audio('1 - Good Enough Main Theme.mp3');
@@ -60,14 +87,22 @@ const gameOverSE = new Audio('gameover.mp3'); // 💀
 
 //　カメラ設定
 let cameraX = 0;
+let cameraY = 0;
 ctx.translate(0, 35); //  描画の基準点を下に40pxずらす！
 
 function updateCamera() {
-    // マイキーが画面の中央に来るようにカメラを動かす
-    // ただし、世界の端（0 や 832-256）を超えないように制限する
-    cameraX = player.x - CONFIG.CAMERA_W / 2;
+    // 1️⃣ 横スクロールの計算
+    cameraX = player.x - CONFIG.VIEW_W / 2;
     if (cameraX < 0) cameraX = 0;
-    if (cameraX > CONFIG.WORLD_W - CONFIG.CAMERA_W) cameraX = CONFIG.WORLD_W - CONFIG.CAMERA_W;
+    if (cameraX > CONFIG.WORLD_W - CONFIG.VIEW_W) cameraX = CONFIG.WORLD_W - CONFIG.VIEW_W;
+
+    // 2️⃣ 縦スクロールの計算（★あきくんの計算！）
+    // マイキーのY座標を中心に、狭めた窓（CONFIG.VIEW_H = 140px）の半分を引くわ。
+    cameraY = player.y - CONFIG.VIEW_H / 2;
+    
+    // カメラの縦位置が、天井（0）や、ステージの底（WORLD_H - VIEW_H ＝ 190 - 140 ＝ 50px）からはみ出さないようにガード！
+    if (cameraY < 0) cameraY = 0;
+    if (cameraY > CONFIG.WORLD_H - CONFIG.VIEW_H) cameraY = CONFIG.WORLD_H - CONFIG.VIEW_H;
 }
 
 //フラグなど
@@ -336,67 +371,66 @@ let items = [
 
 // -----------------描画関数------------
 function drawBackground() {
-    // 1. まず全体を黒（地下・基本色）で塗る
+    // 1. まず全体を黒（地下・基本色）で塗る（ここはUIのマイナス空間を含めて真っ黒にするわ！）
     ctx.fillStyle = "#000000";
-    ctx.fillRect(0, -40, CONFIG.CAMERA_W, CONFIG.CAMERA_H + 40);
+    ctx.fillRect(0, -40, CONFIG.CAMERA_W, CONFIG.VIEW_H + 40);
 
     const skyBlue = "#4169E1"; 
-    const wallBrown = "#8B4513"; // 板の色（アキの好みの茶色に変えてね❤️）
-    const groundLevelY = 116;   // 1階の床（青空の終わり）
-    const restaurantStartY = 113; // 2階の床（これより上が板張りレストラン！）
+    const wallBrown = "#8B4513"; 
+    
+    // 💡 【ここをカメラ対応に！】
+    // 生のY座標から、しっかり cameraY を引いてあげるのよ！
+    const drawGroundLevelY = Math.floor(116 - cameraY);   
+    const drawRestaurantStartY = Math.floor(113 - cameraY); 
 
-    // レストランの範囲（x座標: 48から800くらいまで）
     const resXStart = 48;
     const resXEnd = 812;
 
-    // --- A. 青空の描画（建物の外側） ---
     const drawResXStart = Math.floor(resXStart - cameraX);
     const drawResXEnd = Math.floor(resXEnd - cameraX);
 
-    // 左側の空
+    // --- A. 青空の描画（建物の外側） ---
+    // 💡 高さを 0 から「カメラ引き算後の drawGroundLevelY」までに変えるわ！
     if (drawResXStart > 0) {
         ctx.fillStyle = skyBlue;
-        ctx.fillRect(0, 0, drawResXStart, groundLevelY);
+        ctx.fillRect(0, -40, drawResXStart, drawGroundLevelY + 40); // UI裏(-40)からのりしろ分を足すの⭐
     }
-    // 右側の空
     if (drawResXEnd < CONFIG.CAMERA_W) {
         ctx.fillStyle = skyBlue;
-        ctx.fillRect(drawResXEnd, 0, CONFIG.CAMERA_W - drawResXEnd, groundLevelY);
+        ctx.fillRect(drawResXEnd, -40, CONFIG.CAMERA_W - drawResXEnd, drawGroundLevelY + 40);
     }
 
     // --- B. レストランの板張り壁（建物の内側） ---
-    // 描画すべき範囲の開始と終了を画面内に限定するわ
     const startX = Math.max(0, drawResXStart);
     const endX = Math.min(CONFIG.CAMERA_W, drawResXEnd);
 
     if (startX < endX) {
         for (let x = startX; x < endX; x++) {
-            // カメラ位置（cameraX）を考慮して、板のパターンを固定するわよ❤️
-            // (x + cameraX) % 4 で、3px茶色、1px黒のループを作る
             const worldX = Math.floor(x + cameraX);
             const patternX = worldX % 8;
 
             if (patternX < 7) {
-                ctx.fillStyle = wallBrown; // 3pxは茶色
+                ctx.fillStyle = wallBrown; 
             } else {
-                ctx.fillStyle = "#000000"; // 1pxは黒（隙間）
+                ctx.fillStyle = "#000000"; 
             }
 
-            // 2階の床（restaurantStartY）から上だけを塗る
-            // 下端を groundLevelY までにすれば、1階部分は黒（地下）のままにできるわ！
-            ctx.fillRect(x, 0, 1, restaurantStartY);
+            // 💡 ここも高さを「カメラ引き算後の drawRestaurantStartY」までに変更！
+            ctx.fillRect(x, -40, 1, drawRestaurantStartY + 40);
         }
     }
 }
 
 function drawFloors() {
+
+
     floors.forEach(f => {
-        //if (player.isAutoMoving && player.x === player.autoTargetX) return;
         const drawX1 = Math.floor(f.x1 - cameraX);
+        const startY = Math.floor(f.y - cameraY);
         const width = Math.floor(f.x2 - f.x1);
 
         if (drawX1 + width > 0 && drawX1 < CONFIG.CAMERA_W) {
-            const startY = Math.floor(f.y);
+            const startY = Math.floor(f.y - cameraY);
 
             // --- 屋根 (roof) ---
             if (f.type === "roof") {
@@ -464,7 +498,7 @@ function drawBrickPillar(x, y, w, h) {  //レンガの壁
     const brickH = 4;
     
     const drawX = Math.floor(x - cameraX);
-    const startY = Math.floor(y);
+    const startY = Math.floor(y - cameraY);
 
     for (let row = 0; row < h; row++) {
         let xOffset = (row % 2 === 0) ? 0 : -(brickW / 2);
@@ -516,7 +550,7 @@ function drawBrickPillar(x, y, w, h) {  //レンガの壁
 function drawWall(x, y, w, h) {  //両端の壁
     const blockSize = 8; // 8x8ブロック
     const drawX = Math.floor(x - cameraX);
-    const startY = Math.floor(y);
+    const startY = Math.floor(y - cameraY);
 
     // 指定された幅(w)と高さ(h)を埋めるようにループを回す
     for (let wy = 0; wy < h; wy += blockSize) {
@@ -543,7 +577,7 @@ function drawWall(x, y, w, h) {  //両端の壁
 function drawCells() {  //ドクロの扉
     cells.forEach(cell => {  //扉の枠（常に描画）
         const drawX = Math.floor(cell.x - cameraX);
-        const drawY = Math.floor(cell.y);
+        const drawY = Math.floor(cell.y - cameraY);
 
         if (drawX + cell.w < 0 || drawX > CONFIG.CAMERA_W) return;
 
@@ -626,7 +660,7 @@ function drawGoonieText() {
         ctx.textAlign = "center";
         
         // 元の計算のままでバッチリよ⭐
-        ctx.fillText("THANK YOU!!", goonieText.x - cameraX, goonieText.y);
+        ctx.fillText("THANK YOU!!", goonieText.x - cameraX, goonieText.y- cameraY);
         
         ctx.restore();
     }
@@ -634,7 +668,7 @@ function drawGoonieText() {
 
 function drawJaggedCliff(x, y, w, h, color) {
     const drawX = Math.floor(x - cameraX);
-    const startY = Math.floor(y);
+    const startY = Math.floor(y - cameraY);
 
     // 砂っぽさを出すための3色のバリエーションを作るわ
     // メインの色（color）に近い色を自動で計算するのは難しいから、
@@ -694,7 +728,7 @@ function drawMikey(data, x, y, forcedWidth) {
         const color = currentPalette[colorIndex];
         if (color) {
             const px = (startX - cameraX + (i % width)) * CONFIG.SCALE;
-            const py = (startY + offset + Math.floor(i / width)) * CONFIG.SCALE;
+            const py = (startY - cameraY + offset + Math.floor(i / width)) * CONFIG.SCALE;
             ctx.fillStyle = color;
             ctx.fillRect(px, py, CONFIG.SCALE, CONFIG.SCALE); 
         }
@@ -714,7 +748,7 @@ function drawCharacter(data, x, y, forcedWidth) {
         if (color) {
             // カメラ設定込みの座標計算
             const px = (startX - cameraX + (i % width)) * CONFIG.SCALE;
-            const py = (startY + offset + Math.floor(i / width)) * CONFIG.SCALE;
+            const py = (startY - cameraY + offset + Math.floor(i / width)) * CONFIG.SCALE;
             ctx.fillStyle = color;
             // ここ！1px固定じゃなくて、SCALE分だけ広げてあげるわ❤️
             ctx.fillRect(px, py, CONFIG.SCALE, CONFIG.SCALE); 
@@ -738,7 +772,7 @@ function drawSmallCharacter(data, x, y, forcedWidth) {
             // (i % width) に 0.5 をかけることで、横の並びを半分に凝縮
             // Math.floor(i / width) に 0.5 をかけることで、縦の並びを半分に凝縮
             const px = (startX - cameraX + (i % width) * 0.7) * CONFIG.SCALE;
-            const py = (startY + offset + Math.floor(i / width) * 0.7) * CONFIG.SCALE;
+            const py = (startY - cameraY + offset + Math.floor(i / width) * 0.7) * CONFIG.SCALE;
             
             ctx.fillStyle = color;
             
@@ -2475,7 +2509,7 @@ function drawEnemyBullets() {
             ctx.fillStyle = "white"; // ファミコンっぽく白く光る弾丸！
 
             const drawX = (b.x - cameraX) * CONFIG.SCALE;
-            const drawY = b.y * CONFIG.SCALE;
+            const drawY = (b.y - cameraY) * CONFIG.SCALE;
             
             ctx.fillRect(drawX, drawY, 2, 2);
         }
@@ -3573,7 +3607,7 @@ function drawUI() {
     ctx.font = '9px Arial, sans-serif'; 
     let livesX = CONFIG.CAMERA_W - 12; 
     ctx.fillText(player.lives, livesX, -24);
-    drawCharacter(maikeyUI, cameraX + 250, -42, 8);//残機の顔
+    drawCharacter(maikeyUI, cameraX + 250, cameraY - 42, 8);//残機の顔
 
       //タイマーの表示
     ctx.fillStyle = "white";
@@ -3600,15 +3634,15 @@ function drawUI() {
 
     // 1本目を持っていたら
     if (inventory.key1) {
-        drawCharacter(dotKey1, cameraX + 110, -29, 16);
+        drawCharacter(dotKey1, cameraX + 110, cameraY - 29, 16);
     }
     // 2本目を持っていたら（15pxずらして横に並べる）
     if (inventory.key2) {
-        drawCharacter(dotKey1, cameraX + 120, -29, 16);
+        drawCharacter(dotKey1, cameraX + 120, cameraY - 29, 16);
     }
     // 3本目を持っていたら
     if (inventory.key3) {
-        drawCharacter(dotKey1, cameraX + 130, -29, 16);
+        drawCharacter(dotKey1, cameraX + 130, cameraY - 29, 16);
     }
 
     // --- 🌟 3. グーニーUIの描画を追加するわよ！ 🌟 ---
@@ -3622,9 +3656,7 @@ function drawUI() {
     const isGoonieRescued = cells.some(cell => cell.content === 'goonie' && cell.isKeyFound);
 
     if (isGoonieRescued) {
-        // 文字の横（少し右側）に、幅8pxのドット絵として描画するわ❤️
-        // y座標は上部の黒い帯(-30px ～ 0px)の中に収まるように -18px にしてみたわ！
-        drawCharacter(goonieUI, cameraX + 12, -20, 8);
+        drawCharacter(goonieUI, cameraX + 12, cameraY - 20, 8);
     }
 
     //------ダイヤモンド------
@@ -3639,7 +3671,7 @@ function drawUI() {
     // 2️⃣ ポケットに入っている数（最大7個まで）UIに並べて描く⭐
     for (let i = 0; i < currentDiamonds; i++) {
         let diamondUiX = cameraX + 102 + (i * 9); 
-        let diamondUiY = -21; 
+        let diamondUiY = cameraY - 21; 
         
         if (i < 7) {
             drawCharacter(dotDiamond1, diamondUiX, diamondUiY, 8);
@@ -3670,14 +3702,14 @@ function drawUI() {
     if (inventory.earplugs === true) {
 
         if (typeof dotEarplugs !== 'undefined') {
-            drawCharacter(dotEarplugs, cameraX + 36, -39, 16);
+            drawCharacter(dotEarplugs, cameraX + 36, cameraY - 39, 16);
         }
     }
     //耐熱服
     if (inventory.firecoat === true) {
 
         if (typeof dotFireCoat !== 'undefined') {
-            drawCharacter(dotFireCoat, cameraX + 52, -39, 16);
+            drawCharacter(dotFireCoat, cameraX + 52, cameraY - 39, 16);
         }
     }
 
@@ -3693,9 +3725,9 @@ function drawUI() {
         // 鍵3本の表示位置（cameraX + 130）のさらに右側、被らない場所に描画するわ
         // ドットデータは、あきくんのファイルにある「dotBomb」か「bombItem」を使ってね❤️
         if (typeof dotBomb !== 'undefined') {
-            drawCharacter(dotBomb, cameraX + 23, -39, 16);
-        } else if (typeof bombItem !== 'undefined') {
-            drawCharacter(bombItem, cameraX + 23, -39, 16);
+        drawCharacter(dotBomb, cameraX + 23, cameraY - 39, 16);
+    } else if (typeof bombItem !== 'undefined') {
+        drawCharacter(bombItem, cameraX + 23, cameraY - 39, 16);
         }
     }
 
