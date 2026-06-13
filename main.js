@@ -1077,6 +1077,8 @@ function update(currentTime) {
         return; 
     }
 
+    playInLandscapeFullScreen();
+
     // ------------------------------------------------------------------
     // 🎨 【常時描画】画面をフリーズさせないための絶対防衛線
     // ------------------------------------------------------------------
@@ -3934,6 +3936,50 @@ function handleTitleInput() {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 190, CONFIG.CAMERA_W, 35);
 }
+
+
+
+// 🚀 ボタンが押されたら発動する、全画面＋横向き固定の合体魔法！
+function playInLandscapeFullScreen() {
+    const element = document.documentElement; // ページ全体を対象にするわよ❤️
+
+    // --- ステップ1：まず画面をフルスクリーンにする ---
+    let fullscreenPromise;
+    if (element.requestFullscreen) {
+        fullscreenPromise = element.requestFullscreen();
+    } else if (element.webkitRequestFullscreen) { // Safari用のおまじない
+        fullscreenPromise = element.webkitRequestFullscreen();
+    } else if (element.msRequestFullscreen) {
+        fullscreenPromise = element.msRequestFullscreen();
+    }
+
+    // --- ステップ2：フルスクリーンが成功したら、横向きに強制固定する！ ---
+    if (fullscreenPromise) {
+        fullscreenPromise.then(() => {
+            // フルスクリーン化が成功したあとの未来の処理よ⭐
+            if (screen.orientation && screen.orientation.lock) {
+                // 🔄 画面を「横向き（landscape）」でガッチリロックするわよ、あきくん❤️
+                screen.orientation.lock("landscape")
+                    .then(() => {
+                        console.log("📱 画面を横向きに固定することに成功したわ、あきくん！");
+                    })
+                    .catch((error) => {
+                        console.log("⚠️ 向きの固定に失敗（iPhoneや一部ブラウザ）:", error);
+                    });
+            }
+        }).catch((err) => {
+            console.log("❌ フルスクリーン化自体に失敗しちゃった:", err);
+        });
+    }
+}
+
+// 🌟 【ここが超重要！】HTMLに作ったボタンと、この関数を紐付けるわよ！
+document.addEventListener("DOMContentLoaded", () => {
+    const fsButton = document.getElementById("btnFullscreen");
+    if (fsButton) {
+        fsButton.addEventListener("click", playInLandscapeFullScreen);
+    }
+});
 
 // 📱 スマホ専用ボタン ＆ 完璧な音ロック同時解除システムよ❤️
 function setupConsoleButtons() {
