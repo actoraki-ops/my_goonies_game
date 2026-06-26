@@ -3895,7 +3895,7 @@ function handleTitleInput() {
             drawImageTarget(titleImg2, 0); // 完璧な比率で中央に静止❤️
         }
 
-        // 💡 ロゴ画面での運命のスタートボタン監視！
+        // 💡 ロゴ画面での運命のスタートボタン（または画面タッチ/Aボタン）監視！
         if (isStartButtonPressed && isTitleScreen) {
             
             // 💥 押しっぱなしによる誤作動を防ぐために、一瞬でステージ状態をロック！
@@ -3906,6 +3906,13 @@ function handleTitleInput() {
             startSE.play().catch(error => console.log("SEエラー回避:", error));
 
             console.log("【あきくん演出】スタート即時再生！ここから1秒の極上余韻タイマーを開始します…⭐");
+
+            // 🚀【ここで最強の最終セーフティ発動よあきくん❤️】
+            // タイトル1でフルスクリーン化が漏れていたとしても、ここでAボタン（画面タッチ）が押された
+            // ユーザー操作の瞬間を逃さず、ブラウザに対して確実に「フルサイズ化」を叩き込むわッ！
+            const element = document.documentElement;
+            if (element.requestFullscreen) { element.requestFullscreen().catch(e => console.log(e)); }
+            else if (element.webkitRequestFullscreen) { element.webkitRequestFullscreen().catch(e => console.log(e)); }
 
             // ⏳ 【ここであきくんの余韻タイマーが発動！】
             setTimeout(() => {
