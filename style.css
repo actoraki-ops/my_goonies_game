@@ -41,20 +41,20 @@ canvas {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-right: 20px; /* キャンバスとの隙間 */
+    margin-right: 15px; /* キャンバスとの隙間 */
 }
 .dpad-horizontal {
     display: flex;
     align-items: center;
 }
 .dpad-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
+    width: 50px;
+    height: 50px;
+    font-size: 22px;
     background: #333;
     color: white;
     border: 2px solid #fff;
-    border-radius: 5px;
+    border-radius: 6px;
 
     -webkit-user-select: none;  /* iOSのSafari用⭐ */
     -moz-user-select: none;     /* Firefox用⭐ */
@@ -62,8 +62,8 @@ canvas {
     touch-action: manipulation;
 }
 .dpad-center {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     background: #333;
 }
 
@@ -71,18 +71,18 @@ canvas {
 #action-container {
     display: flex;
     gap: 15px;
-    margin-left: 20px; /* キャンバスとの隙間 */
+    margin-left: 15px; /* キャンバスとの隙間 */
 }
 .action-btn {
-    width: 50px;
-    height: 50px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
-    font-size: 20px;
+    font-size: 24px;
     font-weight: bold;
     background: #a00;
     color: white;
     border: 3px solid #fff;
-    box-shadow: 0 4px #600;
+    box-shadow: 0 5px #600;
 
     -webkit-user-select: none;
     -moz-user-select: none;
