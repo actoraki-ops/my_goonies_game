@@ -3831,7 +3831,7 @@ function handleTitleInput() {
             if (msgEl) msgEl.classList.add('hidden');
         }
 
-        // ⌨️🎮📱 スタート決定ボタンが押された時の処理
+        // ⌨️🎮📱 スタート決定ボタンが押された時の処理（★ここに完全一本化よあきくん❤️）
         if (isStartButtonPressed && isTitleScreen) {
             
             // 🔥【完璧なセーフティ】縦画面のままなら、絶対にタイトル2へ進ませない！
@@ -3841,7 +3841,7 @@ function handleTitleInput() {
                 return; 
             }
 
-            // 🟢 横向きなら次のステージへ突入！！
+            // 🟢 スマホを最初から横向きに構えている時だけ、ここから下が100%安全に実行されるわッ！
             titleStage = 2; 
             titleSlideX = CONFIG.CAMERA_W / 1.5; 
 
@@ -3851,12 +3851,14 @@ function handleTitleInput() {
             keySE.currentTime = 0;
             keySE.play().catch(error => console.log("SEエラー回避:", error));
 
+            // 🌟 タイトル2に切り替わったので、画面サイズを横長に再計算させるの！
             adjustCanvasSize();
+
+            // 📱 次のステージで暴発しないように、スマホのタッチフラグをここで綺麗にリセットよ❤️
             touchKeys.jump = false;
         }
 
-
-
+        // 文字の点滅処理（PUSH START KEY）
         textFlashTimer++;
         if (Math.floor(textFlashTimer / 30) % 2 === 0) {
             ctx.fillStyle = 'white'; 
@@ -3864,36 +3866,6 @@ function handleTitleInput() {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('PUSH START KEY', canvas.width / 2, canvas.height - 115);
-        }
-
-        if (isStartButtonPressed && isTitleScreen) {
-            titleStage = 2; // スライドイン開始！
-            titleSlideX = CONFIG.CAMERA_W / 1.5; 
-
-            keySE.currentTime = 0;
-            keySE.play().catch(error => console.log("SEエラー回避:", error));
-
-            // 🌟【ここを追加！】タイトル2に切り替わったので、画面サイズを横長に再計算させるの！
-            adjustCanvasSize();
-
-            // 📱 次のステージで暴発しないように、スマホのタッチフラグをここで綺麗にリセットよ❤️
-            touchKeys.jump = false;
-
-            // 🚀【フルスクリーン ＋ 横向き強制ロックの魔法】
-            // 💡 PC検証画面やスマホでスペースキーや画面タッチをした瞬間に、これがブラウザに届くわ！
-            const element = document.documentElement;
-            let fullscreenPromise;
-            if (element.requestFullscreen) { fullscreenPromise = element.requestFullscreen(); }
-            else if (element.webkitRequestFullscreen) { fullscreenPromise = element.webkitRequestFullscreen(); }
-
-            if (fullscreenPromise) {
-                fullscreenPromise.then(() => {
-                    // 🔄 大画面化に成功したら、画面の向きを「横向き（landscape）」にロック！
-                    if (screen.orientation && screen.orientation.lock) {
-                        screen.orientation.lock("landscape").catch(e => console.log("向きロック制限回避⭐:", e));
-                    }
-                }).catch(e => console.log("フルスクリーンエラー回避:", e));
-            }
         }
 
     // ========================================================
@@ -3979,6 +3951,8 @@ function handleTitleInput() {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 190, CONFIG.CAMERA_W, 35);
 }
+
+
 
 // 📱 スマホ画面（キャンバス）を直接叩いたとき、ブラウザに「フルサイズ化」を即座に認めさせる絶対防衛線よ❤️
 window.addEventListener('pointerdown', (e) => {
