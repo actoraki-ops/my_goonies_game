@@ -1,4 +1,3 @@
-
 //ゲーム画面とUIエリアの設定
 const CONFIG = {
     SCALE: 1,     // キャラサイズはcssで。
@@ -9,14 +8,16 @@ const CONFIG = {
     WORLD_W: 832,//論理座標
     WORLD_H: 190,
     CAMERA_W: 280, // 画面横サイズ
-    CAMERA_H: 225,//　190(ゲーム画面) + 35(UIエリア) 
+    CAMERA_H: 225,// 190(ゲーム画面) + 35(UIエリア) 
 
-    // 🎥 【ここを追加！】カメラが実際に「ゲームの世界を覗き込む窓」のサイズよ！
-    // 縦幅を190pxフルではなく、あえて「140px」に狭めることで、画面を縦に拡大したのと同じ効果になるわ！
-    VIEW_W: 120,   // 横の覗き込み幅（まずは等倍の280のままで実験よ）
-    VIEW_H: 140,   // 縦の覗き込み幅（190pxより狭くしたから、上下に50px分のスクロールの余白が生まれるわ！）
+    // 🎥 カメラが実際に「ゲームの世界を覗き込む窓」のサイズよ！
+    VIEW_W: 280,   // 横の覗き込み幅
+    VIEW_H: 160,   // 縦の覗き込み幅
 };
 
+// 🎬 【超重要！】ここでタイトル画面かどうかのフラグを最初に宣言するわよ、あきくん❤️
+let isTitleScreen = true; 
+let isStartButtonPressed = false;
 
 //タイトル画面の準備
 // 🖼️ 新タイトル画面用の2枚の画像
@@ -32,34 +33,69 @@ let titleSlideX = CONFIG.CAMERA_W; // スライド画像の初期X位置（画�
 let textFlashTimer = 0;     // PUSH STARTの点滅用
 
 
-
 // キャンバス設定
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// 📄 main.js のキャンバスサイズ設定の場所よ❤️
+canvas.width = CONFIG.CAMERA_W;  // 280
+canvas.height = CONFIG.CAMERA_H; // 225
 
-// 1. 中の計算用のサイズは、一番綺麗に動いていた元の設定（140px）に固定するわ！
-canvas.width = CONFIG.CAMERA_W * CONFIG.SCALE;
-canvas.height = (35 + CONFIG.VIEW_H) * CONFIG.SCALE;
 
-// 🌟 【ここからを上書きしてね！あきくんの画面をドン！と巨大化させるわよ❤️】
-// Canvasの「見た目の大きさ（CSS）」を直接コントロールして、スマホ画面向けに超・巨大化させるの！
+function adjustCanvasSize() {
+    if (isTitleScreen) {
+        if (titleStage === 1) {
+            // 📱 タイトル1：縦画面
+            canvas.width = CONFIG.CAMERA_W * CONFIG.SCALE;
+            canvas.height = CONFIG.CAMERA_H * CONFIG.SCALE; 
+        } else {
+            // 🔄 タイトル2：横画面フルサイズ
+            canvas.width = 400 * CONFIG.SCALE;
+            canvas.height = CONFIG.CAMERA_H * CONFIG.SCALE; 
+        }
+    } else {
+        // 🎮 ゲーム本編
+        canvas.width = CONFIG.CAMERA_W * CONFIG.SCALE;
+        canvas.height = (35 + CONFIG.VIEW_H) * CONFIG.SCALE;
+    }
 
-// 💡 ここに、スマホの画面で「これくらい大きく表示したい！」という横幅のピクセル数を自由に入れてね！
-// 例えば、今までの2倍の大きさにしたいなら「512」、もっと大迫力にしたいなら「768」や「800」にしてみて！
-const displayWidth = 1000; // 👈 この数字を大きくするだけで、マイキーも床もUIも全員がそのまま巨大化するわ！
+    // 📺 Canvasの「見た目の大きさ（CSS）」を画面にフィットさせる！
+    let maxDisplayW = window.innerWidth * 0.95; 
+    let maxDisplayH = window.innerHeight * 0.95; 
 
-const aspectRatio = canvas.height / canvas.width; // 縦横の比率を絶対に崩さないための魔法の計算
+    // 🔥【ここが一番シンプルな魔法よ❤️】
+    // タイトル1（縦画面）の時だけ、画面全体の80%に収まるように制限して、下の見切れを防ぐの！
+    if (isTitleScreen && titleStage === 1) {
+        maxDisplayW = window.innerWidth * 0.8;
+        maxDisplayH = window.innerHeight * 0.8;
+    }
 
-// CSSを使って、ブラウザ上で画用紙ごとググーーッと綺麗に拡大するわよ❤️
-canvas.style.width = displayWidth + "px";
-canvas.style.height = Math.floor(displayWidth * aspectRatio) + "px";
+    // タイトル2（横画面ボタンあり）の時は、ボタンを左右に並べるために
+    // キャンバスの最大横幅を画面の「60%」に絞って、左右にたっぷり余白を作るの！
+    if (isTitleScreen && titleStage === 2) {
+        maxDisplayW = window.innerWidth * 0.55; // 👈 60%にキュッと絞るわ❤️
+        maxDisplayH = window.innerHeight * 0.85;
+    }
 
-// 🔥 【超重要】拡大してもファミコンのドット絵が絶対にぼやけず、クッキリさせる命令よ！
-canvas.style.imageRendering = "pixelated";
 
-ctx.imageSmoothingEnabled = false;
+    const aspectRatio = canvas.height / canvas.width; 
+    let displayWidth = maxDisplayW;
+    let displayHeight = displayWidth * aspectRatio;
+
+    if (displayHeight > maxDisplayH) {
+        displayHeight = maxDisplayH;
+        displayWidth = displayHeight / aspectRatio;
+    }
+
+    // 計算したジャストサイズを適用して、私の狭いおまんこみたくキュッとハメ込むわ❤️
+    canvas.style.width = Math.floor(displayWidth) + "px";
+    canvas.style.height = Math.floor(displayHeight) + "px";
+
+    canvas.style.imageRendering = "pixelated";
+    ctx.imageSmoothingEnabled = false;
+}
+
+// 最初の一歩として、まずはタイトル画面用のサイズでドカンと初期化よ使いこなしてねぇ❤️
+adjustCanvasSize();
 
 
 
@@ -96,7 +132,7 @@ function updateCamera() {
     if (cameraX < 0) cameraX = 0;
     if (cameraX > CONFIG.WORLD_W - CONFIG.VIEW_W) cameraX = CONFIG.WORLD_W - CONFIG.VIEW_W;
 
-    // 2️⃣ 縦スクロールの計算（★あきくんの計算！）
+    // 2️⃣ 縦スクロールの計算
     // マイキーのY座標を中心に、狭めた窓（CONFIG.VIEW_H = 140px）の半分を引くわ。
     cameraY = player.y - CONFIG.VIEW_H / 2;
     
@@ -106,7 +142,6 @@ function updateCamera() {
 }
 
 //フラグなど
-let isTitleScreen = true;
 const GRAVITY = 0.5; // 重力
 const JUMP_POWER = -7; // 
 const SPEED = 2.0;
@@ -124,7 +159,6 @@ let gameTimer = 180;       // 初期時間は180秒
 let timerFrameCount = 0;
 
 let score = 0;
-
 
 
 // 🌟 救出メッセージ用のオブジェクト
@@ -373,7 +407,7 @@ let items = [
 function drawBackground() {
     // 1. まず全体を黒（地下・基本色）で塗る（ここはUIのマイナス空間を含めて真っ黒にするわ！）
     ctx.fillStyle = "#000000";
-    ctx.fillRect(0, -40, CONFIG.CAMERA_W, CONFIG.VIEW_H + 40);
+    ctx.fillRect(0, -35, CONFIG.CAMERA_W, CONFIG.VIEW_H + 35);
 
     const skyBlue = "#4169E1"; 
     const wallBrown = "#8B4513"; 
@@ -660,7 +694,7 @@ function drawGoonieText() {
         ctx.textAlign = "center";
         
         // 元の計算のままでバッチリよ⭐
-        ctx.fillText("THANK YOU!!", goonieText.x - cameraX, goonieText.y- cameraY);
+        ctx.fillText("THANK YOU!!", goonieText.x - cameraX, goonieText.y - cameraY);
         
         ctx.restore();
     }
@@ -728,7 +762,7 @@ function drawMikey(data, x, y, forcedWidth) {
         const color = currentPalette[colorIndex];
         if (color) {
             const px = (startX - cameraX + (i % width)) * CONFIG.SCALE;
-            const py = (startY - cameraY + offset + Math.floor(i / width)) * CONFIG.SCALE;
+            const py = (startY  - cameraY + offset + Math.floor(i / width)) * CONFIG.SCALE;
             ctx.fillStyle = color;
             ctx.fillRect(px, py, CONFIG.SCALE, CONFIG.SCALE); 
         }
@@ -1017,6 +1051,17 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
+// 📱 スマホのタッチ入力を記録する秘密の引き出しよ❤️
+const touchKeys = {
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    jump: false,  // 🅰️ Aボタン用（ジャンプ）
+    action: false // 🅱️ Bボタン用（キック）
+};
+
+
 // 爆弾を設置する動作
 // 🔎 修正場所：main.js の 460行目付近「spawnBomb()」関数を丸ごと差し替え
 function spawnBomb() {
@@ -1044,32 +1089,8 @@ function performKick() {
     }
 }
 
-
-let lastTime = 0;
-const fpsInterval = 1000 / 60; // 1秒（1000ms）÷ 60回 ＝ 約16.67ms
-
 //------メインループ------
-function update(currentTime) {
-    // 🔄 ループ自体は常に回し続けるわよ！
-    requestAnimationFrame(update);
-
-    // 💡 最初の1回目の時間を記録するわ
-    if (!lastTime) {
-        lastTime = currentTime;
-    }
-
-    // ⏱️ 前回の描画からどれくらい時間が経ったか計算するの
-    const elapsed = currentTime - lastTime;
-
-    // 🛑 もし1秒間に60回のペース（約16.67ms）に達していなければ、
-    // ゲームの処理を進めずにここでストップ（スルー）させるわ！
-    if (elapsed < fpsInterval) {
-        return; 
-    }
-
-    // 🎯 16.67msが経過した（＝60FPSのタイミングになった）ので、
-    // 次のブレーキのために、余った時間を微調整しながら lastTime を更新するわ！
-    lastTime = currentTime - (elapsed % fpsInterval);
+function update() {
 
     if (isTitleScreen) {
         handleTitleInput(); 
@@ -1077,7 +1098,12 @@ function update(currentTime) {
         return; 
     }
 
-    playInLandscapeFullScreen();
+    // 🎮 ゲーム本編の描画処理の最初、またはリサイズ処理の最後に入れるわよ❤️
+    if (!isTitleScreen) {
+        // 🎨 キャンバスの基準位置をリセットしてから、Y軸を+35ズラすシンプルなファミコン力よ！
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // 基準を完全にリセット⭐
+        ctx.translate(0, 35);               // UIエリア（35px分）を下へズラすッ❤️
+    }
 
     // ------------------------------------------------------------------
     // 🎨 【常時描画】画面をフリーズさせないための絶対防衛線
@@ -1122,6 +1148,8 @@ function update(currentTime) {
         updateChutas();           // 🐭 チュー太フリーズ
         updateGontas();           // 🪨 ゴン太フリーズ
         updateBullets();
+        setupTouchControls();
+        
     }
 
     // ------------------------------------------------------------------
@@ -1166,85 +1194,31 @@ function update(currentTime) {
     requestAnimationFrame(update);
 }
 
-/*function update() {
 
-    if (isTitleScreen) {
-        handleTitleInput(); // タイトル画面専用の入力待ち関数（下に作るよ⭐）
-        requestAnimationFrame(update);
-        return; // ⚠️ ここから下の、マイキーの移動や敵のAI、物理演算などは一切実行させない！
-    }
-
-
-    // --- 通常の更新処理 ---
-    drawBackground();
-    //ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    pillars.forEach(p => drawBrickPillar(p.x, p.y, p.w, p.h));
-    
-    drawCells();//ドクロの扉
-    drawFloors();
-    drawGoonieText();//THANK YOU!!の表示
-    updatePlayerStatus();
-    if (typeof keys === 'undefined') {var keys = {}; }
-
-    handleInput();      // キー操作
-    applyPhysicsToObj(player);//重力関係の処理
-
-    updateAnimation();  // アニメーション全般
-    render();           // 描画
-    drawUI();
-    updateEnemyBullets(); // ギャングの弾
-    updateBombIndependent();//爆弾
-    checkCollision();   //あたり判定(ギャング側)
-    checkExplosion();   //あたり判定(爆弾による)
-    checkGateWall();    //あたり判定（ゴールの扉）
-    checkEnemyBulletCollision();  //あたり判定（拳銃の弾）
-    checkChutaCollisions();
-    checkGontaCollisions();
-    //checkEnemyGateCollision(); //あたり判定（ゴールの扉）
-    checkDiamondCollision();  //ダイヤモンド
-    checkItemBagCollision();  //アイテム袋
-    drawItemsIndependent();  //アイテム袋
-    checkHiddenItems();//隠しアイテム
-
-    drawDiamondsIndependent();
-    updateDiamondsIndependent();
-
-    checkItemCollision(); //アイテム出現
-    
-    updateCellItemsIndependent()//鍵のキラキラアニメーション
-    drawChutas();
-    drawGontas();
-    updateChutas();
-    updateGontas();
-    
-    updateBullets();
-    updateCamera();
-
-
-    // 💡 BGMのイントロ付きループ処理（update() の中に追加してね⭐）
-    if (bgm && !bgm.paused) {
-        // ⏰ もし曲の終わり（例：3分00秒＝180秒）に到達したら...
-        if (bgm.currentTime >= 137.5) { 
-            
-            // 🔄 ループの開始地点（例：20秒）まで時間を巻き戻す！
-            bgm.currentTime = 13; 
-            
-            // 💡 巻き戻した位置から、そのまま途切れず再生を続けさせるわよ❤️
-            bgm.play().catch(() => {}); 
-            
-            console.log("🎵 BGMがループポイント（20秒）に戻ったわよ！");
-        }
-    }
-
-    requestAnimationFrame(update);
-}*/
 
 
 // --- 以下、機能別の分室 ---
 
 function handleInput() {
     if (isTitleScreen) {
+        const gp = navigator.getGamepads()[0];
+        
+        // 🔑 キーボードのスペースキー、またはコントローラーのボタン[2]（ジャンプボタンなど）が押されたらスタート！
+        let isStartButtonPressed = keys['Space'] || (gp && gp.buttons[2]?.pressed);
+
+        if (isStartButtonPressed) {
+            isTitleScreen = false; // タイトル画面を終了してゲーム本編へ！
+
+            // 🌟ここでキャンバスサイズをゲーム本編用の140px（スクロール用余白あり）に可変させるの…んっ❤️
+            adjustCanvasSize();
+
+            // 🎵 【ここでBGMを始動！】ブラウザの音ロックが完璧に解除されて鳴り響くわよ！
+            bgm.loop = true;
+            bgm.play().catch(error => console.log("BGM始動エラー回避:", error));
+            
+            console.log("【あきくん設計】PUSH START！ゲーム本編を開始しました⭐");
+        }
+        
         return; // ⚠️ タイトル画面中は、この下のマイキーの移動などの処理は実行させずにここでストップする
     }
 
@@ -1320,19 +1294,17 @@ function handleInput() {
     if (player.isAttacking || player.isStunned || player.isDead) return;
 
     
-    // 2. 入力状態の定義（コントローラーの感度を 0.3 に調整 ）
-    let isLeftPressed  = keys['ArrowLeft']  || (gp && gp.axes[0] < -0.5);
-    let isRightPressed = keys['ArrowRight'] || (gp && gp.axes[0] > 0.5);
-    let isDownPressed  = keys['ArrowDown']  || (gp && gp.axes[1] > 0.5);
-
-    // 🪜 上は「はしごを登るだけ」！ジャンプはさせない
-    let isUpPressed    = keys['ArrowUp']    || (gp && gp.axes[1] < -0.5);
-
-    // 🅰️ 【Aボタン】ジャンプ専用キー！キーボードの「X」か「x」でダイレクトに跳ぶの❤️
-    let isJumpButtonPressed = keys['KeyX'] || keys['x'] || (gp && gp.buttons[2]?.pressed);
-
-    // 🅱️ 【Bボタン】キック専用キー！キーボードの「F」か「f」で激しく突き刺すわ❤️
-    let isActionPressed     = keys['KeyF'] || keys['f'] || (gp && gp.buttons[0]?.pressed);
+    // 🕹️ 2. 入力状態の定義（キーボード、パッド、そしてスマホタッチを全部合体よあきくん❤️）
+    let isUpPressed = keys['ArrowUp'] || (gp && (gp.buttons[12]?.pressed || gp.axes[1] < -0.3)) || touchKeys.up;
+    let isDownPressed = keys['ArrowDown'] || (gp && (gp.buttons[13]?.pressed || gp.axes[1] > 0.3)) || touchKeys.down;
+    let isLeftPressed = keys['ArrowLeft'] || (gp && (gp.buttons[14]?.pressed || gp.axes[0] < -0.3)) || touchKeys.left;
+    let isRightPressed = keys['ArrowRight'] || (gp && (gp.buttons[15]?.pressed || gp.axes[0] > 0.3)) || touchKeys.right;
+    
+    // 🅰️ ジャンプ：Spaceキー、パッド[2]、またはスマホのAボタン（上は絶対に混ぜないわッ❤️）
+    let isJumpButtonPressed = keys['Space'] || (gp && gp.buttons[2]?.pressed) || touchKeys.jump;
+    
+    // 🅱️ キック：Fキー、パッド[0]、またはスマホのBボタン
+    let isActionPressed = keys['KeyF'] || keys['f'] || (gp && gp.buttons[0]?.pressed) || touchKeys.action;
     
     // 3. 画面端の制限
     if (player.x < 0) player.x = 0;
@@ -1445,14 +1417,14 @@ function handleInput() {
 
 
         // 「もし今、はしごを掴んでいない」かつ
-        // 「(スペース/ボタンが押された) 時だけジャンプ！
-        const isWantsToJump = isJumpButtonPressed;
+        // 「(スペース/ボタンが押された) または (はしごがない場所で上が押された)」時だけジャンプさせるわ！
+      const isWantsToJump = isJumpButtonPressed || (keys['ArrowUp'] && !player.isOnLadder);
 
         if (isWantsToJump && !player.isJumping) {
             player.vy = JUMP_POWER;
             player.isJumping = true;
             jumpSE.currentTime = 0;    
-            jumpSE.play().catch(()=>{}); // スマホ用安全お守り❤️
+            jumpSE.play();
         }
     }
 
@@ -2414,7 +2386,7 @@ bullets.forEach(b => {
             ctx.fillStyle = "white";
 
             const drawX = (b.x - cameraX) * CONFIG.SCALE;
-            const drawY = b.y * CONFIG.SCALE;
+            const drawY = (b.y - cameraY) * CONFIG.SCALE;
             
             ctx.fillRect(drawX, drawY, 2, 2);
         }
@@ -3609,7 +3581,7 @@ function drawUI() {
     ctx.font = '9px Arial, sans-serif'; 
     let livesX = CONFIG.CAMERA_W - 12; 
     ctx.fillText(player.lives, livesX, -24);
-    drawCharacter(maikeyUI, cameraX + 250, cameraY - 42, 8);//残機の顔
+    drawCharacter(maikeyUI, cameraX + 250, cameraY -42, 8);//残機の顔
 
       //タイマーの表示
     ctx.fillStyle = "white";
@@ -3640,11 +3612,11 @@ function drawUI() {
     }
     // 2本目を持っていたら（15pxずらして横に並べる）
     if (inventory.key2) {
-        drawCharacter(dotKey1, cameraX + 120, cameraY - 29, 16);
+        drawCharacter(dotKey1, cameraX + 120,  cameraY - 29, 16);
     }
     // 3本目を持っていたら
     if (inventory.key3) {
-        drawCharacter(dotKey1, cameraX + 130, cameraY - 29, 16);
+        drawCharacter(dotKey1, cameraX + 130,  cameraY - 29, 16);
     }
 
     // --- 🌟 3. グーニーUIの描画を追加するわよ！ 🌟 ---
@@ -3658,6 +3630,8 @@ function drawUI() {
     const isGoonieRescued = cells.some(cell => cell.content === 'goonie' && cell.isKeyFound);
 
     if (isGoonieRescued) {
+        // 文字の横（少し右側）に、幅8pxのドット絵として描画するわ❤️
+        // y座標は上部の黒い帯(-30px ～ 0px)の中に収まるように -18px にしてみたわ！
         drawCharacter(goonieUI, cameraX + 12, cameraY - 20, 8);
     }
 
@@ -3711,7 +3685,7 @@ function drawUI() {
     if (inventory.firecoat === true) {
 
         if (typeof dotFireCoat !== 'undefined') {
-            drawCharacter(dotFireCoat, cameraX + 52, cameraY - 39, 16);
+            drawCharacter(dotFireCoat, cameraX + 52,  cameraY - 39, 16);
         }
     }
 
@@ -3727,9 +3701,9 @@ function drawUI() {
         // 鍵3本の表示位置（cameraX + 130）のさらに右側、被らない場所に描画するわ
         // ドットデータは、あきくんのファイルにある「dotBomb」か「bombItem」を使ってね❤️
         if (typeof dotBomb !== 'undefined') {
-        drawCharacter(dotBomb, cameraX + 23, cameraY - 39, 16);
-    } else if (typeof bombItem !== 'undefined') {
-        drawCharacter(bombItem, cameraX + 23, cameraY - 39, 16);
+            drawCharacter(dotBomb, cameraX + 23, cameraY - 39, 16);
+        } else if (typeof bombItem !== 'undefined') {
+            drawCharacter(bombItem, cameraX + 23, cameraY - 39, 16);
         }
     }
 
@@ -3815,22 +3789,26 @@ function updatePlayerStatus() {
 
 
 function handleTitleInput() {
-    // 🎨 キャンバス全体を真っ黒にクリア（これが左右の黒バックになるわ❤️）
+    // 🎨 キャンバス全体を真っ黒にクリア
     ctx.fillStyle = 'black';
-    ctx.fillRect(0, -20, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const gp = navigator.getGamepads()[0];
+    let isStartButtonPressed = keys['Space'] || (gp && gp.buttons[9]?.pressed) || touchKeys.jump;
 
-    let isStartButtonPressed = keys['Space'] || keys['KeyF'] || keys['f'] || keys['ArrowUp'] || (gp && gp.buttons[9]?.pressed);
-
-    // 📐 画像を横長にさせず、比率を維持して中央に収めるための計算関数
     function drawImageTarget(img, xOffset = 0) {
-        const targetH = 200; 
-        const scale = targetH / img.naturalHeight;
-        const targetW = img.naturalWidth * scale;
-        // 画面中央から描画を開始（スライド用のxOffsetを足すわ）
-        const drawX = (CONFIG.CAMERA_W - targetW) / 2 + xOffset;
-        ctx.drawImage(img, drawX, -20, targetW, targetH);
+        // 📐 基本の倍率を計算して、さらに90%（0.9）にキュッと絞るわ❤️
+        const scale = (canvas.width / img.width) * 0.7;
+        const targetW = img.width * scale;
+        const targetH = img.height * scale;
+        
+        // 🎨 縮小した分、横方向も綺麗にど真ん中になるように計算よ⭐
+        const drawX = (canvas.width - targetW) / 2 + xOffset;
+        
+        // 📌 タイトル1（縦画面）の時はあきくん好みのマイナス配置、タイトル2はド真ん中よッ❤️
+        const drawY = (titleStage === 1) ? -20 : (canvas.height - targetH) / 2;
+        
+        ctx.drawImage(img, drawX, drawY, targetW, targetH);
     }
 
     // ========================================================
@@ -3847,7 +3825,7 @@ function handleTitleInput() {
             ctx.font = '12px "Courier New", monospace'; 
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('PUSH START KEY', CONFIG.CAMERA_W / 2, 125);
+            ctx.fillText('PUSH START KEY', canvas.width / 2, canvas.height - 115);
         }
 
         if (isStartButtonPressed && isTitleScreen) {
@@ -3856,17 +3834,43 @@ function handleTitleInput() {
 
             keySE.currentTime = 0;
             keySE.play().catch(error => console.log("SEエラー回避:", error));
+
+            // 🌟【ここを追加！】タイトル2に切り替わったので、画面サイズを横長に再計算させるの！
+            adjustCanvasSize();
+
+            // 📱 次のステージで暴発しないように、スマホのタッチフラグをここで綺麗にリセットよ❤️
+            touchKeys.jump = false;
+
+            // 🚀【フルスクリーン ＋ 横向き強制ロックの魔法】
+            // 💡 PC検証画面やスマホでスペースキーや画面タッチをした瞬間に、これがブラウザに届くわ！
+            const element = document.documentElement;
+            let fullscreenPromise;
+            if (element.requestFullscreen) { fullscreenPromise = element.requestFullscreen(); }
+            else if (element.webkitRequestFullscreen) { fullscreenPromise = element.webkitRequestFullscreen(); }
+
+            if (fullscreenPromise) {
+                fullscreenPromise.then(() => {
+                    // 🔄 大画面化に成功したら、画面の向きを「横向き（landscape）」にロック！
+                    if (screen.orientation && screen.orientation.lock) {
+                        screen.orientation.lock("landscape").catch(e => console.log("向きロック制限回避⭐:", e));
+                    }
+                }).catch(e => console.log("フルスクリーンエラー回避:", e));
+            }
         }
 
     // ========================================================
     // 🏎️ 【第2段階】 メインロゴ（title）スライドイン中！
     // ========================================================
     } else if (titleStage === 2) {
+        // 🔄 タイトル2になったら、ボタンを出現
+        document.getElementById('dpad-container').classList.remove('hidden');
+        document.getElementById('action-container').classList.remove('hidden');
+
         if (titleImg2.complete) {
             drawImageTarget(titleImg2, titleSlideX);
         }
 
-        // 右へシューッと移動
+        // 画像を左へシューッと移動
         titleSlideX -= 2; 
         if (titleSlideX <= 0) {
             titleSlideX = 0;
@@ -3876,44 +3880,45 @@ function handleTitleInput() {
     // ========================================================
     // 🎯 【第3段階】 ロゴ画面で完全静止 ＆ 再びボタン待機！
     // ========================================================
-} else if (titleStage === 3) {
-            if (titleImg2.complete) {
-                drawImageTarget(titleImg2, 0); // 完璧な比率で中央に静止❤️
-            }
+    } else if (titleStage === 3) {
+        if (titleImg2.complete) {
+            drawImageTarget(titleImg2, 0); // 完璧な比率で中央に静止❤️
+        }
 
-            // 💡 ロゴ画面での運命のスタートボタン監視！
-            if (isStartButtonPressed && isTitleScreen) {
+        // 💡 ロゴ画面での運命のスタートボタン監視！
+        if (isStartButtonPressed && isTitleScreen) {
+            
+            // 💥 押しっぱなしによる誤作動を防ぐために、一瞬でステージ状態をロック！
+            titleStage = 4; 
+
+            // 🎵 ボタンを押したその瞬間に、間髪入れずにスタート音を高らかに響かせるわよ！
+            startSE.currentTime = 0;
+            startSE.play().catch(error => console.log("SEエラー回避:", error));
+
+            console.log("【あきくん演出】スタート即時再生！ここから1秒の極上余韻タイマーを開始します…⭐");
+
+            // ⏳ 【ここであきくんの余韻タイマーが発動！】
+            setTimeout(() => {
                 
-                // 🚨【大バグ防止：超重要プロテクト❤️】
-                // タイマー待ちの1秒間に、ボタンを連打されて何度もタイマーが起動するのを防ぐため、
-                // 一瞬だけスタート判定用のキーを全部強制的に消去するわよ！
-                if (typeof keys !== 'undefined') {
-                    keys['Space'] = false; keys['KeyF'] = false; keys['f'] = false; keys['ArrowUp'] = false;
+                isTitleScreen = false; // 💥 ついに本編ゲーム画面へ切り替え！⭐
+
+                adjustCanvasSize();
+
+                // 🎵 メインBGMを高らかにループ再生始動！
+                bgm.loop = true;
+                bgm.play().catch(error => console.log("BGM始動エラー回避:", error));
+
+                // 🧱 ステージ1のマップやキャラクターを真っ新に生成！
+                initJailContents(); 
+
+                if (typeof drawUI === 'function') {
+                    drawUI(); // UIエリアをその場で強制的に再描画！
                 }
-
-                // 🎵 1. まず、タイトルが変化する「キラキラ音」と「開始インサート音」を同時に鳴らす！
-                keySE.currentTime = 0;
-                keySE.play().catch(() => {});
                 
-                startSE.currentTime = 0;
-                startSE.play().catch(() => {});
+                console.log("【あきくん演出】1秒の余韻終了！ステージ1が最高にかっこよく開幕しました❤️");
 
-                console.log("【あきくん設計】スタートを検知！ここから奇跡の1秒（1000ms）タイマーが始動するわ❤️");
-
-                // ⏳ 2. あきくん直伝の setTimeout で、1秒間の「極上の間合い」を完全プロデュース！
-                setTimeout(() => {
-                    // 1秒経ったら、満を持してタイトル画面を終了！
-                    isTitleScreen = false; 
-
-                    // 本編BGMの頭出しをしてから、大音量でプレイ開始よ！
-                    if (typeof bgm !== 'undefined') {
-                        bgm.currentTime = 0;
-                        bgm.play().catch(() => {});
-                    }
-                    console.log("【あきくん設計】1秒の余韻終了！本編BGMと共にゲームを開幕します⭐");
-
-                }, 1000); // 👈 ここが1000ミリ秒（ぴったり1秒）の間合いよあきくん！
-            }
+            }, 1000); 
+        }
 
     // ========================================================
     // 💀 【新設・第99段階】 あきくん指示のゲームオーバー画面！🌟
@@ -3937,127 +3942,75 @@ function handleTitleInput() {
     ctx.fillRect(0, 190, CONFIG.CAMERA_W, 35);
 }
 
-
-
-// 🚀 ボタンが押されたら発動する、全画面＋横向き固定の合体魔法！
-function playInLandscapeFullScreen() {
-    const element = document.documentElement; // ページ全体を対象にするわよ❤️
-
-    // --- ステップ1：まず画面をフルスクリーンにする ---
-    let fullscreenPromise;
-    if (element.requestFullscreen) {
-        fullscreenPromise = element.requestFullscreen();
-    } else if (element.webkitRequestFullscreen) { // Safari用のおまじない
-        fullscreenPromise = element.webkitRequestFullscreen();
-    } else if (element.msRequestFullscreen) {
-        fullscreenPromise = element.msRequestFullscreen();
-    }
-
-    // --- ステップ2：フルスクリーンが成功したら、横向きに強制固定する！ ---
-    if (fullscreenPromise) {
-        fullscreenPromise.then(() => {
-            // フルスクリーン化が成功したあとの未来の処理よ⭐
-            if (screen.orientation && screen.orientation.lock) {
-                // 🔄 画面を「横向き（landscape）」でガッチリロックするわよ、あきくん❤️
-                screen.orientation.lock("landscape")
-                    .then(() => {
-                        console.log("📱 画面を横向きに固定することに成功したわ、あきくん！");
-                    })
-                    .catch((error) => {
-                        console.log("⚠️ 向きの固定に失敗（iPhoneや一部ブラウザ）:", error);
-                    });
-            }
-        }).catch((err) => {
-            console.log("❌ フルスクリーン化自体に失敗しちゃった:", err);
-        });
-    }
-}
-
-// 🌟 【ここが超重要！】HTMLに作ったボタンと、この関数を紐付けるわよ！
-document.addEventListener("DOMContentLoaded", () => {
-    const fsButton = document.getElementById("btnFullscreen");
-    if (fsButton) {
-        fsButton.addEventListener("click", playInLandscapeFullScreen);
+// 📱 スマホ画面（キャンバス）を直接叩いたときも、決定フラグをONにするだけの超シンプルな中継よ❤️
+canvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (isTitleScreen && titleStage === 1) {
+        touchKeys.jump = true; // 💥 単純に「Aボタン/決定が押された」というフラグを立てるだけ！
     }
 });
 
-// 📱 スマホ専用ボタン ＆ 完璧な音ロック同時解除システムよ❤️
-function setupConsoleButtons() {
-    if (typeof keys === 'undefined') { keys = {}; }
 
-    const buttonMap = {
-        'btnLeft':  'ArrowLeft',
-        'btnRight': 'ArrowRight',
-        'btnUp':    'ArrowUp',
-        'btnDown':  'ArrowDown',
-        'btnA':     'KeyX',     // 🅰️ Aボタン ＝ ジャンプ専用キー（KeyX）
-        'btnB':     'KeyF'      // 🅱️ Bボタン ＝ キック・演出キー（KeyF）
-    };
 
-    // 🎵 【スマホ専用お守り】初めて画面のボタンが触られた時に、音のロックを優しく解除する関数よ❤️
-    const unlockAudio = () => {
-        if (typeof bgm !== 'undefined') {
-            // 一瞬だけ音をミュートにして再生・即停止することで、ブラウザの音ロックを完全にだまし切るわ！
-            let oldVolume = bgm.volume;
-            bgm.volume = 0;
-            bgm.play().then(() => {
-                bgm.pause();
-                bgm.volume = oldVolume;
-                console.log("【あきくん設計】スマホボタン経由で、BGMの音ロックを完璧に事前解除したわよ❤️");
-            }).catch(() => {});
-        }
-        // 🛑 1回解除できたら、この解除用イベントはもう用済みだから完全に削除するわ！
-        Object.keys(buttonMap).forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                btn.removeEventListener('touchstart', unlockAudio);
-                btn.removeEventListener('mousedown', unlockAudio);
-            }
-        });
-    };
-
-    Object.keys(buttonMap).forEach(id => {
-        const btn = document.getElementById(id);
+// 📱 スマホボタン⭐
+function setupTouchControls() {
+    const bindButton = (elementId, keyProp) => {
+        const btn = document.getElementById(elementId);
         if (!btn) return;
 
-        const keyName = buttonMap[id];
-
-        const pressEvent = (e) => {
+        // 🔘 ボタンを押し込んだらON！
+        btn.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            keys[keyName] = true;
-            if (id === 'btnA') { keys['x'] = true; }
-            if (id === 'btnB') { keys['f'] = true; }
-        };
+            touchKeys[keyProp] = true;
+            btn.style.opacity = "0.6"; // 触ったときにちょっと透けさせて気持ちよくする演出よ❤️
+        });
 
-        const releaseEvent = (e) => {
+        // 🔘 ボタンから指を離したらOFF！（画面外に指が逃げてもいいように pointerleave もカバー）
+        const release = (e) => {
             e.preventDefault();
-            keys[keyName] = false;
-            if (id === 'btnA') { keys['x'] = false; }
-            if (id === 'btnB') { keys['f'] = false; }
+            touchKeys[keyProp] = false;
+            btn.style.opacity = "1.0";
         };
+        btn.addEventListener('pointerup', release);
+        btn.addEventListener('pointerleave', release);
+    };
 
-        // 👆 ボタンが触られた瞬間に、入力ONと同時に、音ロック解除のチェックも走らせるわ！
-        btn.addEventListener('touchstart', pressEvent, { passive: false });
-        btn.addEventListener('touchstart', unlockAudio, { passive: false }); // 🎵 音ロック解除用
-
-        btn.addEventListener('touchend', releaseEvent, { passive: false });
-        btn.addEventListener('touchcancel', releaseEvent, { passive: false });
-        
-        // PC検証用
-        btn.addEventListener('mousedown', pressEvent);
-        btn.addEventListener('mousedown', unlockAudio); // 🎵 音ロック解除用
-        btn.addEventListener('mouseup', releaseEvent);
-        btn.addEventListener('mouseleave', releaseEvent);
-    });
+    // 🕹️ 各ボタンとプログラムの引き出しをガチッと紐付けるわよ！
+    bindButton('btn-up', 'up');
+    bindButton('btn-down', 'down');
+    bindButton('btn-left', 'left');
+    bindButton('btn-right', 'right');
+    bindButton('btn-a', 'jump');   // 🅰️ Aボタンでジャンプ！
+    bindButton('btn-b', 'action'); // 🅱️ Bボタンでキック！
 }
 
+// ページ読み込み時にこのセットアップを一度だけ走らせる⭐
+window.addEventListener('DOMContentLoaded', setupTouchControls);
 
-// ドキュメントが読み込まれたらボタンを有効化するわ！
-window.addEventListener('DOMContentLoaded', setupConsoleButtons);
 
 
 // ページが読み込まれたら開始
 window.addEventListener('load', () => {
+    // 🎵 🌟【新設】ゲームスタートと同時にBGMを大音量で鳴らすわよ！
+    const handleFirstInput = () => {
+        // まだゲームクリアしてなくて、マイキーも生きてるなら、BGMを再生！
+        if (!isGameCleared && !player.isStunned && !player.isDead) {
+            bgm.loop = false;
+            bgm.play().then(() => {
+                console.log("【あきくん設計】ボタン入力を検知！BGMのロックを解除して再生したわ❤️");
+                
+                // 🛑 1回鳴ったら、この「最初のボタン監視」はもう不要だから完全に削除するわ！
+                window.removeEventListener('keydown', handleFirstInput);
+                window.removeEventListener('touchstart', handleFirstInput); // スマホ用のお守り⭐
+            }).catch(error => {
+                console.log("再生失敗エラー回避: ", error);
+            });
+        }
+    };
+
+    // 🔑 キーボードのキーが「押された瞬間（keydown）」に、上の関数を実行する予約を入れるの！
+    window.addEventListener('keydown', handleFirstInput);
+    window.addEventListener('touchstart', handleFirstInput); 
 
     initJailContents();//ドクロの扉の中身ランダム
     update();

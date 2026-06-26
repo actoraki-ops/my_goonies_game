@@ -6,29 +6,24 @@
     
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <div id="orientation-blocker">
-        <div class="blocker-message">
-            🔄 画面を横向きに回転させてね！<br>
-            <span>（スマホの画面回転ロックを解除してね❤️）</span>
-        </div>
-    </div>
-    
-    <div class="control-panel" style="text-align: center; margin: 10px 0;">
-        <button id="btnFullscreen" style="padding: 8px 16px; font-weight: bold; background: #FF4500; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            📺 フルスクリーン＆横画面で遊ぶ⭐
-        </button>
-    </div>
-    
-    <div class="handheld-console">
-        <div class="d-pad-area">
+    <div class="game-container">
+        <div id="dpad-container" class="touch-controls hidden">
+            <button id="btn-up" class="dpad-btn">▲</button>
+            <div class="dpad-horizontal">
+                <button id="btn-left" class="dpad-btn">◀</button>
+                <div class="dpad-center"></div>
+                <button id="btn-right" class="dpad-btn">▶</button>
             </div>
-        <div class="screen-area">
-            <canvas id="gameCanvas"></canvas>
+            <button id="btn-down" class="dpad-btn">▼</button>
         </div>
-        <div class="action-area">
-            </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="action-container" class="touch-controls hidden">
+            <button id="btn-b" class="action-btn">B</button>
+            <button id="btn-a" class="action-btn">A</button>
+        </div>
     </div>
     
     <script src="player-data.js"></script>
