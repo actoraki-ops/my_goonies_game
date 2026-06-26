@@ -55,6 +55,11 @@ canvas {
     color: white;
     border: 2px solid #fff;
     border-radius: 5px;
+
+    -webkit-user-select: none;  /* iOSのSafari用⭐ */
+    -moz-user-select: none;     /* Firefox用⭐ */
+    user-select: none;          /* AndroidのChromeや一般的なブラウザ用最強指定！ */
+    touch-action: manipulation;
 }
 .dpad-center {
     width: 40px;
@@ -78,6 +83,11 @@ canvas {
     color: white;
     border: 3px solid #fff;
     box-shadow: 0 4px #600;
+
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
 }
 
 /* 📱 スマホを横向きにしてメッセージ（キャンバスの外側の広い空間にドカンと配置） */
