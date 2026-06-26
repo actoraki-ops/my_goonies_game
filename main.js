@@ -3296,7 +3296,7 @@ function checkItemBagCollision() {
 function checkHiddenItems() {
 
     const gp = navigator.getGamepads()[0];
-    let isUpPressed = keys['ArrowUp'] || keys['Up'] || keys['w'] || (gp && (gp.buttons[12]?.pressed || gp.axes[1] < -0.3));
+    let isUpPressed = keys['ArrowUp'] || keys['Up'] || keys['w'] || (gp && (gp.buttons[12]?.pressed || gp.axes[1] < -0.3)) || touchKeys.up;
   
     if (isUpPressed) {
         // ダイヤモンドの配列が存在するかチェック
