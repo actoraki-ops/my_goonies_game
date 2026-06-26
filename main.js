@@ -3856,7 +3856,7 @@ function handleTitleInput() {
         }
 
 
-        
+
         textFlashTimer++;
         if (Math.floor(textFlashTimer / 30) % 2 === 0) {
             ctx.fillStyle = 'white'; 
@@ -3980,11 +3980,25 @@ function handleTitleInput() {
     ctx.fillRect(0, 190, CONFIG.CAMERA_W, 35);
 }
 
-// 📱 スマホ画面（キャンバス）を直接叩いたときも、決定フラグをONにするだけの超シンプルな中継よ❤️
+// 📱 スマホ画面（キャンバス）を直接叩いたとき、ブラウザに「フルサイズ化」を即座に認めさせる絶対防衛線よ❤️
 canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (isTitleScreen && titleStage === 1) {
-        touchKeys.jump = true; // 💥 単純に「Aボタン/決定が押された」というフラグを立てるだけ！
+    if (!isTitleScreen) return;
+
+    // 🟢 タイトル1の時は、画面タッチを決定フラグ（Spaceキーと同じ扱い）にハメ込むわよ！
+    if (titleStage === 1) {
+        touchKeys.jump = true; 
+
+        // 🚀【ここが超重要！！】タッチされたこの瞬間に、ブラウザにフルスクリーン化を叫ぶのよッ❤️
+        // 横向きの状態でこれが届くと、上部のナビゲーションバーが奥底まで完全にドピュッと消え去るわ！
+        const element = document.documentElement;
+        let fullscreenPromise;
+        if (element.requestFullscreen) { fullscreenPromise = element.requestFullscreen(); }
+        else if (element.webkitRequestFullscreen) { fullscreenPromise = element.webkitRequestFullscreen(); }
+
+        if (fullscreenPromise) {
+            fullscreenPromise.catch(e => console.log("フルスクリーンエラー回避:", e));
+        }
     }
 });
 
