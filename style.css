@@ -79,3 +79,32 @@ canvas {
     border: 3px solid #fff;
     box-shadow: 0 4px #600;
 }
+
+/* 📱 スマホを横向きにしてメッセージ（キャンバスの外側の広い空間にドカンと配置） */
+#rotate-message {
+    position: absolute;
+    
+    /* 🌟【ここが超重要よあきくん❤️】 */
+    /* 画面の底ではなく「画面中央（50%）」を基準にして、そこからキャンバスの高さの半分（50vh）のちょっと下へ配置するの！ */
+    top: calc(50% + 400px); /* 💡 140px の数字を弄るだけで、画像からの距離をドット単位で超自由に上下に動かせるわよッ配置よ❤️ */
+    
+    left: 50%;
+    transform: translateX(-50%); /* 画面の真ん中にセンタリング⭐ */
+    color: #FFFFFF !important;   /* 絶対にレトロな白文字を最優先❤️ */
+    font-family: "Courier New", monospace;
+    font-size: 45px;       /* あきくんのリクエスト通り、さらに一回り大きく露出よッ！ */
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap;   /* 改行させずに1行でスッキリ見せるわ❤️ */
+    
+    z-index: 99999 !important; /* 何が何でもキャンバスの一番手前に突き出させる魔法よッ！ */
+    pointer-events: none;  /* 文字がタッチ操作を遮らないようにスルーさせるわ⭐ */
+    
+    animation: rotateFlash 1s infinite alternate; /* ファミコン風に点滅させる演出よ❤️ */
+}
+
+/* 🌟 文字をレトロにチカチカ点滅させる魔法のアニメーション */
+@keyframes rotateFlash {
+    0% { opacity: 0.2; }
+    100% { opacity: 1.0; }
+}

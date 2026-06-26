@@ -3819,6 +3819,44 @@ function handleTitleInput() {
             drawImageTarget(titleImg1, 0);
         }
 
+        // 📱 スマホが今「縦向き（Portrait）」かどうかをチェック
+        const isPortrait = window.innerWidth < window.innerHeight;
+        const msgEl = document.getElementById('rotate-message');
+
+        if (isPortrait) {
+            // 🚨 縦画面の時は、キャンバスの外の広い空間にメッセージを全開露出ッ❤️
+            if (msgEl) msgEl.classList.remove('hidden');
+        } else {
+            // 🟢 横画面になったら、メッセージを即座に隠すわ⭐
+            if (msgEl) msgEl.classList.add('hidden');
+        }
+
+        // ⌨️🎮📱 スタート決定ボタンが押された時の処理
+        if (isStartButtonPressed && isTitleScreen) {
+            
+            // 🔥【完璧なセーフティ】縦画面のままなら、絶対にタイトル2へ進ませない！
+            if (isPortrait) {
+                console.log("🛑 セーフティ作動：縦画面なのでブロック！");
+                touchKeys.jump = false; 
+                return; 
+            }
+
+            // 🟢 横向きなら次のステージへ突入！！
+            titleStage = 2; 
+            titleSlideX = CONFIG.CAMERA_W / 1.5; 
+
+            // 運命の切り替えの瞬間だから、警告メッセージはここで完全に役目終了、永久に非表示よ❤️
+            if (msgEl) msgEl.classList.add('hidden');
+
+            keySE.currentTime = 0;
+            keySE.play().catch(error => console.log("SEエラー回避:", error));
+
+            adjustCanvasSize();
+            touchKeys.jump = false;
+        }
+
+
+        
         textFlashTimer++;
         if (Math.floor(textFlashTimer / 30) % 2 === 0) {
             ctx.fillStyle = 'white'; 
@@ -3992,7 +4030,7 @@ window.addEventListener('DOMContentLoaded', setupTouchControls);
 // ページが読み込まれたら開始
 window.addEventListener('load', () => {
     // 🎵 🌟【新設】ゲームスタートと同時にBGMを大音量で鳴らすわよ！
-    const handleFirstInput = () => {
+    /*const handleFirstInput = () => {
         // まだゲームクリアしてなくて、マイキーも生きてるなら、BGMを再生！
         if (!isGameCleared && !player.isStunned && !player.isDead) {
             bgm.loop = false;
@@ -4006,11 +4044,11 @@ window.addEventListener('load', () => {
                 console.log("再生失敗エラー回避: ", error);
             });
         }
-    };
+    };*/
 
     // 🔑 キーボードのキーが「押された瞬間（keydown）」に、上の関数を実行する予約を入れるの！
-    window.addEventListener('keydown', handleFirstInput);
-    window.addEventListener('touchstart', handleFirstInput); 
+    /*window.addEventListener('keydown', handleFirstInput);
+    window.addEventListener('touchstart', handleFirstInput); */
 
     initJailContents();//ドクロの扉の中身ランダム
     update();
