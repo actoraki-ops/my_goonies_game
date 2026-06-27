@@ -158,7 +158,9 @@ let enemyBullets = []; // 🔫 ギャングのピストルの弾配列
 let gameTimer = 180;       // 初期時間は180秒
 let timerFrameCount = 0;
 
-let score = 0;
+// 🎬 ゴール後のタイム高速清算演出用のコントロール変数
+let isTimeCountingDown = false;  // 高速カウントダウン中かどうかのフラグ
+let timeScoreTickTimer = 0;      // 数字を減らすスピードを調整するタイマー
 
 
 // 🌟 救出メッセージ用のオブジェクト
@@ -401,6 +403,34 @@ let items = [
     { x: 110, y: 62, isHidden: true, isTaken: false, content: 'earplugs' },  
     { x: 530, y: 62, isHidden: true, isTaken: false, content: 'firecoat' }, 
 ];
+
+// 🏆 ファミコン版グーニーズ完全再現・得点表オブジェクト
+const SCORE_TABLE = {
+    // 👾 敵撃破
+    ENEMY_CHUTA: 100,
+    ENEMY_GONTA: 100,
+    ENEMY_GANG: 100,
+    ENEMY_BAT: 200,      // キィーイ（コウモリ）
+    ENEMY_SKELETON: 200, // ガラガラ（ガイコツ）
+    ENEMY_FISH: 100,     // マーボウ（トビウオ）
+    ENEMY_OCTOPUS: 100,  // オクトパック（タコ）
+    ENEMY_ZOMBIE: 500,
+
+    // 💎 アイテム
+    ITEM_DIAMOND: 500,
+    ITEM_BAG: 200,
+    ITEM_HIDDEN_GET: 5000,   // 隠れキャラ時間内獲得
+    ITEM_HIDDEN_MISS: 1000,  // 隠れキャラ出現のみ（時間切れ消失）
+
+    // 🎬 イベント
+    RESCUE_FRIEND: 1000,    // 仲間救出
+    TIME_BONUS_MULTIPLIER: 10, // 鍵穴・クリア時の【残りタイム×10点】
+    KEY_OPEN: 0, // 💡 鍵を開けた時は「残りタイム×10点」の即時計算
+};
+
+// 🌟 現在のスコアと1UP監視用の変数
+let score = 0;
+let next1UpScore = 50000; // 最初の1UPは5万点
 
 
 // -----------------描画関数------------
@@ -1189,7 +1219,7 @@ function update(currentTime) {
     updateAnimation();  // ⚠️ もしこの中でギャングが勝手に歩いていても……
     
     // 💡【あきくん監修：ギャング絶対拘束システム】
-    // マイキーがやられている間は、ギャングの座標をさっき保存した位置に強制逆戻り！1ミリも動かさないわ！強制おすわりよ❤️
+    // マイキーがやられている間は、ギャングの座標をさっき保存した位置に強制逆戻り！1ミリも動かさない
     if ((player.isStunned || player.isDead) && typeof enemy !== 'undefined' && enemy) {
         if (savedGangX !== null) enemy.x = savedGangX;
         if (savedGangY !== null) enemy.y = savedGangY;
@@ -1266,18 +1296,56 @@ function handleInput() {
         player.isMoving = true; // アニメーションのために常に移動中にする
 
         // ------------------------------------------------------------------
-        // 🛑 【追加】もし（50, 180）で立ち止まりタイマーが動いている間の処理
+        // ⏱️ 🎯【高速タイム清算処理！】
         // ------------------------------------------------------------------
-        if (player.clearWaitTimer > 0) {
-            player.clearWaitTimer--;  // タイマーを減らす
-            player.isMoving = false;  // 立ち止まり中なので足踏みアニメを止める（正面か特定の向きに）
-            
-            // タイマーが0（時間切れ）になったら、はしご（43）へターゲットを切り替えて再出発！
-            if (player.clearWaitTimer === 0) {
-                player.autoTargetX = 43; // 🎯 目的地をはしごの座標に書き換え！
-                console.log("【あきくん設計】タメ時間終了！目的地を43に書き換えてはしごへ向かいます🏃");
+        // 💡 立ち止まりタイマー（clearWaitTimer）の代わりに、「タイム清算フラグ」で管理
+        if (player.isTimeCountingDown) {
+            player.isMoving = false;  // 立ち止まり中なので足踏みアニメを止める
+
+            // 💡【あきくんの設定❤️】3倍速にするために1回あたり3秒ずつ大清算するわよ！
+            const decrementAmount = 3; 
+
+            // 🎵 最初の1回目だけ、今のgameTimerの値を音の基準点として記憶させるわ⭐
+            if (typeof player.lastSoundTimer === 'undefined') {
+                player.lastSoundTimer = gameTimer;
+                
+                // 🚪 到着した瞬間の最初の1回も、小気味よく音を鳴らしておくわね❤️
+                if (typeof keySE !== 'undefined') {
+                    keySE.currentTime = 0;
+                    keySE.play().catch(() => {});
+                }
             }
-            return; // 立ち止まり中は、下の移動処理をスキップする
+
+            if (gameTimer > 0) {
+                // 残り時間が3秒以上あるなら3秒減らす、足りないなら残りを全部引く処理よ！
+                let currentTickReduce = Math.min(gameTimer, decrementAmount);
+                
+                gameTimer -= currentTickReduce;          // ⏳ 3倍速でgameTimerをドバッと減らす！
+                score += currentTickReduce * 10; // 🏆 減った分だけスコアに一気に加算（1秒あたり10点）！
+                
+                // ----------------------------------------------------------
+                // 🔊 【あきくんのこだわりロジック】音の間引きシステム発動！
+                // ----------------------------------------------------------
+                // 💡 最後に音を鳴らした基準点（lastSoundTimer）から、10秒以上タイムが減少したかチェック！
+                if (player.lastSoundTimer - gameTimer >= 10) {
+                    if (typeof keySE !== 'undefined') {
+                        keySE.currentTime = 0;
+                        keySE.play().catch(() => {});
+                    }
+                    // 🎯 音を鳴らしたから、今のgameTimerを次の「10秒チェック用」の新しい基準点にするわよ❤️
+                    player.lastSoundTimer = gameTimer;
+                }
+
+            } else {
+                // 🏁 タイムが完全に0になった瞬間の処理よ！
+                player.isTimeCountingDown = false; // 清算フラグをOFF！
+                delete player.lastSoundTimer;      // 次のクリアのために音用変数をキレイに消去⭐
+                
+                // 🚀 はしご（43）へ向けて再出発よあきくんッ！
+                player.autoTargetX = 43; 
+                console.log("【あきくん設計】音すっきりタイム清算完了！はしごへ向かいます🏃");
+            }
+            return; // タイム清算中は下の歩行移動をスキップ
         }
 
         // ------------------------------------------------------------------
@@ -1288,15 +1356,15 @@ function handleInput() {
                 player.x -= 1; // 🚶‍♂️ 左へ
                 if (player.x < player.autoTargetX) player.x = player.autoTargetX;
             } else if (player.x < player.autoTargetX) {
-                player.x += 1; // 🚶‍♂️ 右へ（クリア直後に50へ向かう時用⭐）
+                player.x += 1; // 🚶‍♂️ 右へ（クリア直後に50や60へ向かう時用⭐）
                 if (player.x > player.autoTargetX) player.x = player.autoTargetX;
             }
 
-            // 💡 【超重要】もし今右へ歩いていて、最初の目的地「50」にぴったり重なった瞬間！
+            // 💡 【超重要】もし今右へ歩いていて、最初の目的地「60」にぴったり重なった瞬間！
             if (player.x === 60 && player.autoTargetX === 60) {
-                // ⏳ ここで1.5秒（90フレーム）の立ち止まりタイマーを発動させる！
-                player.clearWaitTimer = 90; 
-                console.log("【あきくん設計】中継点（50, 180）に到着！1.5秒のタメを作ります⭐");
+                // ⏳ ここで固定タイマーの代わりに、高速カウントダウンフラグをONにするわよ❤️
+                player.isTimeCountingDown = true; 
+                console.log("【あきくん設計】中継点（60）に到着！これより残りタイムの高速清算を開始しますッ✨");
             }
         } 
         // ------------------------------------------------------------------
@@ -1311,8 +1379,6 @@ function handleInput() {
             if (player.y > 200) { 
                 player.isAutoMoving = false;
                 player.isMoving = false;
-                
-                // 次のステージのために、一応ターゲットを初期値に戻しておくおまじない⭐
                 player.autoTargetX = 50; 
             }
         }
@@ -1500,6 +1566,7 @@ function handleInput() {
                     }
                 // 3. 中身が「グーニー」だった場合
                 else if (cell.content === 'goonie') {
+                    score += SCORE_TABLE.RESCUE_FRIEND;
                     cell.isKeyFound = true; // グーニーが画面から消える
 
                     // 🌟 救出した瞬間に、その場所からメッセージを出現させるわよ！
@@ -1671,27 +1738,44 @@ function applyPhysicsToObj(obj) {
     // 🧱 2. 本来の両端の壁 ＆ 支柱(cliff) ＆ 1階のレンガ壁のあたり判定！ 🌟
     // ========================================================
     for (let f of floors) {
-        // 通常の壁(wall)、支柱(cliff) に加えて、「x1が390で、高さhが49のレンガブロック」を壁として判定する！
         const isTargetBrickWall = (f.type === "brick" && f.x1 === 390 && f.h === 49);
-
         if (f.type !== "wall" && f.type !== "cliff" && !isTargetBrickWall) continue; 
 
-        // 📐 縦軸と横軸の重なりチェック：あきくんの完璧な壁判定ロジック！
+        // 📐 縦軸と横軸の重なりチェック
         if (charBottom > f.y && charTop < f.y + f.h) {
             if (obj.x + 4 < f.x2 && obj.x + 12 > f.x1) {
                 
-                // 💡【ハシゴワープ完全防止セーフティ❤️】
-                // もしハシゴを登っている最中や、登りきった直後のキワにいる時は、壁の押し戻しをスキップする！
                 if (obj.isOnLadder || (obj === player && player.isAutoMoving)) continue;
+
+                // 💡【ギャングの段差めり込み防止お守り】
+                if (obj !== player && f.x1 === 285 && obj.vy !== 0) {
+                    continue;
+                }
 
                 if (obj.x + 8 < (f.x1 + f.x2) / 2) {
                     obj.x = f.x1 - 12;
-                    // 敵（チュー太やギャング）なら、ぶつかった瞬間に移動速度(vx)を反転してUターン！⭐
-                    if (obj !== player && obj.vx > 0) obj.vx = -obj.vx;
+                    // 🌟【ここを修正❤️】空中にいるとき（obj.vy !== 0）は、壁に掠っても絶対にUターンさせない！
+                    if (obj !== player && obj.vx > 0 && obj.vy === 0) obj.vx = -obj.vx;
                 } else {
                     obj.x = f.x2 - 4;
-                    if (obj !== player && obj.vx < 0) obj.vx = -obj.vx;
+                    // 🌟【ここを修正❤️】同じく、地面にいるときだけ反転させる！
+                    if (obj !== player && obj.vx < 0 && obj.vy === 0) obj.vx = -obj.vx;
                 }
+            }
+        }
+    }
+
+    //見えない壁、左壁の上の屋根の部分のあたり判定を補う。
+    // 🧱 【左上の屋根の隙間】見えない壁の計算処理（y: 0 〜 35 の範囲）
+    if (obj.y >= 0 && obj.y <= 35) {
+        // マイキーもギャングも、壁のエリア（47〜54px）に左側から突入しようとしたら押し戻す！
+        if (obj.x < 54 && obj.x > 40) {
+            obj.x = 54; // 壁の右端でピタッと止める❤️
+            
+            // 🌟【ギャング用のお守り】もしぶつかったのがギャングなら、その場で賢くUターンさせる！
+            if (obj !== player) {
+                obj.patrolDir = 'right';
+                obj.direction = 'right';
             }
         }
     }
@@ -1899,6 +1983,7 @@ function updateAnimation() {
             gangDownSE2.play();
 
             enemy.isDead = true;
+            score += SCORE_TABLE.ENEMY_GANG;
             enemy.isStunned = false;
             enemy.respawnTimer = 180; // ここから3秒の復活カウント
         }
@@ -1922,64 +2007,68 @@ function updateAnimation() {
     }
 
 
-// 🕵️ ギャングの移動・ジャンプ・ハシゴアニメーション（新・気まぐれパトロールAI）
+    // 🕵️ ギャングの移動・ジャンプ・ハシゴアニメーション（記憶お守り搭載・広域パトロールAI）
     if (!enemy.isStunned && !enemy.isDead && !player.isStunned && !player.isDead) {
         
-        // 🌟 ギャングにまだ状態(state)がなければ、最初のパトロール状態をセット
+        // 🌟 ギャングの初期状態セット
         if (!enemy.state) {
             enemy.state = 'patrol';
             enemy.patrolDir = (Math.random() < 0.4) ? 'left' : 'right';
-            enemy.ignoreLadderTimer = 0; // 🌟無視タイマーの初期化
+            enemy.ignoreLadderTimer = 0; 
+            enemy.lastLadderX = -999;     // 🧠 【新設】最後に使ったハシゴのX座標を記憶
+            enemy.memoryResetTimer = 0;   // 🧠 【新設】記憶を忘れるまでの長期タイマー
         }
 
         const enemyFootY = enemy.y + 21; // ギャングの正確な足元
 
         // ==================================================================
-        // 🪜 【ハシゴ昇降状態】（※一番上で床判定をシャットアウト！）
+        // 🪜 【ハシゴ昇降状態】
         // ==================================================================
         if (enemy.state === 'climb' && enemy.activeLadder) {
             enemy.isClimbing = true;
-            enemy.vy = 0; // 重力をカット
-            enemy.x = enemy.activeLadder.x; // 横軸を完全に固定！斜め移動を100%防止
+            enemy.vy = 0; 
+            enemy.x = enemy.activeLadder.x; 
 
             let lad = enemy.activeLadder;
 
-        if (enemy.climbSubState === 'up') {
+            if (enemy.climbSubState === 'up') {
                 enemy.y -= 0.5; // ゆっくり登る
                 
-                // 【ハシゴ終了条件：上】
                 if (enemy.y + 21 <= lad.top) { 
-                    enemy.y = lad.top - 21; // 床の上に直立
+                    enemy.y = lad.top - 21; 
                     enemy.vy = 0;
                     
-                    // 🎲【新設】ハシゴを終えた瞬間、35%の確率だけで悩ませるわよ！❤️
+                    // 🧠 ハシゴを昇りきったら、このハシゴのX座標を記憶！
+                    enemy.lastLadderX = lad.x;
+                    enemy.memoryResetTimer = 300; // ⏳ 約5秒間は、このハシゴを絶対に再利用させない！❤️
+
                     if (Math.random() < 0.35) {
-                        enemy.state = 'think';  // 悩むモードへ
-                        enemy.thinkTimer = 90;  // 1.5秒キョロキョロ
+                        enemy.state = 'think';  
+                        enemy.thinkTimer = 90;  
                     } else {
-                        // 65%の確率は、悩まずすぐパトロールへ！
                         enemy.patrolDir = (Math.random() < 0.5) ? 'left' : 'right';
                         enemy.state = 'patrol';
-                        enemy.ignoreLadderTimer = 20; // 今降りたハシゴを1秒無視するお守り❤️
+                        enemy.ignoreLadderTimer = 40; // すぐ別のハシゴを探しに行かせるお守り
                     }
                 }
             } else {
                 enemy.y += 0.5; // ゆっくり降りる
                 
-                // 【ハシゴ終了条件：下】
                 if (enemy.y + 21 >= lad.bottomY) {
-                    enemy.y = lad.bottomY - 21; // 地面に直立
+                    enemy.y = lad.bottomY - 21; 
                     enemy.vy = 0;
                     
-                    // 🎲【新設】ハシゴを終えた瞬間、35%の確率だけで悩ませるわよ！❤️
+                    // 🧠 ハシゴを降りきったら、このハシゴのX座標を記憶！
+                    enemy.lastLadderX = lad.x;
+                    enemy.memoryResetTimer = 300; // ⏳ 約5秒間は、このハシゴを絶対に再利用させない！❤️
+
                     if (Math.random() < 0.35) {
-                        enemy.state = 'think';  // 悩むモードへ
-                        enemy.thinkTimer = 90;  // 1.5秒キョロキョロ
+                        enemy.state = 'think';  
+                        enemy.thinkTimer = 90;  
                     } else {
-                        // 65%の確率は、悩まずすぐパトロールへ！
                         enemy.patrolDir = (Math.random() < 0.5) ? 'left' : 'right';
                         enemy.state = 'patrol';
-                        enemy.ignoreLadderTimer = 20; // 今降りたハシゴを1秒無視するお守り❤️
+                        enemy.ignoreLadderTimer = 40; 
                     }
                 }
             }
@@ -1990,20 +2079,17 @@ function updateAnimation() {
                 enemy.animeFrame = (enemy.animeFrame === 0) ? 1 : 0;
                 enemy.climbTimer = 0;
             }
-
-            return; // ハシゴ中は処理をここでシャッター！
+            return; 
         }
 
         // ==================================================================
-        // 🤔 【シンキング状態（ハシゴの終わりで立ち止まって首を振る！）】
+        // 🤔 【シンキング状態】
         // ==================================================================
         if (enemy.state === 'think') {
             enemy.isClimbing = false;
             enemy.vy = 0; 
-
             enemy.thinkTimer--;
 
-            // 4フレームごとに左右の向きを交互に変えてキョロキョロさせる
             if (enemy.thinkTimer % 8 < 4) {
                 enemy.direction = 'left';
             } else {
@@ -2011,61 +2097,48 @@ function updateAnimation() {
             }
 
             if (enemy.thinkTimer <= 0) {
-                // 次に進む方向をランダムに決める
                 enemy.patrolDir = (Math.random() < 0.5) ? 'left' : 'right';
                 enemy.state = 'patrol';
-                
-                // 🌟【最重要新設！】ハシゴを使い終わって歩き出す瞬間に、
-                // 60フレーム（約1秒間）はハシゴを絶対に無視する魔法のタイマーをかけるのよ❤️
-                enemy.ignoreLadderTimer = 40; 
+                enemy.ignoreLadderTimer = 50; 
             }
-
             applyPhysicsToObj(enemy);
-            return; // 思考中も下の移動ロジックを通さないシャッター！
+            return; 
         }
 
         // ==================================================================
-        // 🏃 【1. パトロール状態（左右にまっすぐ突っ走る！）】
+        // 🏃 【1. パトロール状態】
         // ==================================================================
         if (enemy.state === 'patrol') {
-            //拳銃のクールダウンタイマー
-            if (enemy.gunCooldownTimer > 0) {
-                enemy.gunCooldownTimer--;
+            if (enemy.gunCooldownTimer > 0) enemy.gunCooldownTimer--;
+
+            // 🧠【長期記憶の風化タイマー】
+            if (enemy.memoryResetTimer > 0) {
+                enemy.memoryResetTimer--;
+                if (enemy.memoryResetTimer === 0) {
+                    enemy.lastLadderX = -999; // 5秒経ったら忘れて、また使えるようにするわ❤️
+                }
             }
-            // 🌟==============================================================
-            // 🎯【新設：マイキー発見！銃撃モード割り込みチェック！】
-            // ==============================================================
-            // あきくん指定の条件：Xの差が30px以内、かつYの差が10px以内！
+
+            // 🎯 マイキー発見チェック
             let diffX = Math.abs((enemy.x + 8) - (player.x + 8));
             let diffY = Math.abs(enemy.y - player.y);
-
-            //110pxの中にプレイヤーが入ったら拳銃モード。ただし、クールダウン時はダメ。
             if (diffX <= 110 && diffY <= 10 && enemy.vy === 0 && !enemy.isJumping && (enemy.gunCooldownTimer || 0) <= 0) {
-                
                 let isPlayerAhead = false;
-                if (enemy.patrolDir === 'right' && player.x > enemy.x) {
-                    isPlayerAhead = true;
-                } else if (enemy.patrolDir === 'left' && player.x < enemy.x) {
-                    isPlayerAhead = true;
-                }
+                if (enemy.patrolDir === 'right' && player.x > enemy.x) isPlayerAhead = true;
+                else if (enemy.patrolDir === 'left' && player.x < enemy.x) isPlayerAhead = true;
 
                 if (isPlayerAhead) {
-                    enemy.state = 'gun';     // 🔫 銃撃モードへ移行！
-                    enemy.gunTimer = 90;     // ⏳ 1.5秒（90フレーム）の緊張感！
+                    enemy.state = 'gun';     
+                    enemy.gunTimer = 90;     
                 }
             }
-            // ==============================================================
+            
             enemy.isClimbing = false;
+            if (enemy.ignoreLadderTimer > 0) enemy.ignoreLadderTimer--;
 
-            if (enemy.ignoreLadderTimer > 0) {
-                enemy.ignoreLadderTimer--;
-            }
-
-            // 移動前の座標を記録
             const oldX = enemy.x;
-            let moveSpeed = (enemy.vy !== 0) ? 1.8 : 1.0; 
+            let moveSpeed = (enemy.vy !== 0) ? 1.8 : 1.2; // 💡テストがダレないように少しキビキビ歩かせるわ❤️
 
-            // 1) 決まった方向に走り続ける
             if (enemy.patrolDir === 'right') {
                 enemy.x += moveSpeed;
                 enemy.direction = 'right';
@@ -2074,77 +2147,66 @@ function updateAnimation() {
                 enemy.direction = 'left';
             }
 
-            // 🛑【あきくん調整：可動範囲ロック（130〜800版！❤️）】
+            // 可動範囲ロック
             if (enemy.x === oldX && enemy.x > 130 && enemy.x < (800 - 16)) {
                 enemy.patrolDir = (enemy.patrolDir === 'left') ? 'right' : 'left'; 
-                enemy.direction = enemy.patrolDir; // 描画の向きも綺麗に合わせる⭐
+                enemy.direction = enemy.patrolDir; 
             }
 
-            // 🌟==============================================================
-            // 🦘【新設：3階の特定段差（X=287〜295）自動飛び越えシステム！】
-            // ==============================================================
-            // ギャングが地面にいて(vy === 0)、かつ3階の段差のすぐ手前に近づいたら大ジャンプさせるわよ！
-            if (enemy.vy === 0 && !enemy.isJumping) {
-                // ギャングの中心X座標（enemy.x + 8）が、あの段差の手前（左右5px以内）にいるか？
-                // かつ、ギャングが3階（y座標が59付近、つまり足元が80前後）にいるとき！
-                if (enemy.x + 8 >= 275 && enemy.x + 8 <= 305 && enemy.y < 90) {
-                    // 🚀 反転する前に、あきくん秘伝の黄金パワーでピョンッと跳ねさせるわ！❤️
-                    enemy.vy = -4.0; 
-                }
-            }
+// ⏳ 【新設】連続ジャンプ防止タイマーのカウントダウン（毎フレーム 1 減らす）
+if (enemy.jumpCooldownTimer > 0) {
+    enemy.jumpCooldownTimer--;
+}
 
-            // 🦘【穴（床なし）自動ジャンプシステム：あきくん監修・気まぐれ運命分岐仕様★】
-            if (enemy.vy === 0 && !enemy.isJumping) {
-                // 目の前の床を感知するセンサー
-                let checkAheadX = (enemy.patrolDir === 'right') ? (enemy.x + 20) : (enemy.x - 12);
-                let isFloorAhead = false;
+// 🧱【3階の特定段差（X=285）シンプルジャンプセンサー！】
+// 💡 条件に「タイマーが 0 のときだけ」を追加！
+if (enemy.vy === 0 && (!enemy.jumpCooldownTimer || enemy.jumpCooldownTimer === 0) && enemy.y < 90) {
+    let isStepAhead = false;
+    if (enemy.patrolDir === 'right') {
+        if (enemy.x + 16 >= 276 && enemy.x <= 284) isStepAhead = true; 
+    } else {
+        if (enemy.x <= 302 && enemy.x >= 294) isStepAhead = true;
+    }
+    
+    if (isStepAhead) {
+        enemy.vy = -4.2; 
+        enemy.jumpCooldownTimer = 20; // ⏳ 約0.3秒間は、次のジャンプを絶対に禁止するお守り！❤️
+        console.log("🧱【ギャングAI】段差をジャンプ！タイマー始動！");
+    }
+}
 
-                for (let f of floors) {
-                    if (checkAheadX >= f.x1 && checkAheadX <= f.x2 && Math.abs(enemyFootY - f.y) <= 12) {
-                        isFloorAhead = true; 
-                        break;
-                    }
-                }
+// 🦘【穴（床なし）自動ジャンプシステム】
+if (enemy.vy === 0 && (!enemy.jumpCooldownTimer || enemy.jumpCooldownTimer === 0)) {
+    let checkAheadX = (enemy.patrolDir === 'right') ? (enemy.x + 16 + 0) : (enemy.x - 0);
+    let isFloorAhead = false;
 
-                // 🛑 ガーン！すぐ目の前に床がない（穴）を発見したぞ！
-                if (!isFloorAhead) {
-                    let isRight = (enemy.patrolDir === 'right');
-                    let rnd = Math.random(); // 🎲 ここで運命のダイスを振るわよ、あきくん！ ❤️
+    for (let f of floors) {
+        if (checkAheadX >= f.x1 && checkAheadX <= f.x2 && Math.abs(enemyFootY - f.y) <= 12) {
+            isFloorAhead = true; 
+            break;
+        }
+    }
 
-                    if (rnd < 0.50) {
-                        // ==========================================
-                        // 運命①【確率50%】：男のプライドをかけた大ジャンプ！！🚀
-                        // ==========================================
-                        // 💡 向こう岸に床があろうがなかろうが、関係ねぇ！力強く前方に跳ねます！
-                        enemy.vy = -5.5; 
-                        if (isRight) enemy.x += 3; // 空中への慣性をちょっとプラス⭐
-                        else enemy.x -= 3;
-                        console.log("🎲【ギャングAI】穴を発見！行くぜ大ジャンプ！（落下リスク有り）");
+    if (!isFloorAhead) {
+        let isRight = (enemy.patrolDir === 'right');
+        let rnd = Math.random(); 
 
-                    } else if (rnd < 0.85) {
-                        // ==========================================
-                        // 運命②【確率35%】：おっと危ない！賢くUターン！🔄
-                        // ==========================================
-                        // 💡 穴の手前でピタッと反転して、何事もなかったかのように引き返します。
-                        enemy.patrolDir = isRight ? 'left' : 'right';
-                        enemy.direction = enemy.patrolDir;
-                        console.log("🎲【ギャングAI】穴を発見！あぶねっ、引き返そう！");
+        if (rnd < 0.50) {
+            enemy.vy = -5.5; 
+            enemy.jumpCooldownTimer = 30; // ⏳ 約0.5秒間は、空中で絶対に2回目のジャンプをさせない！❤️
+            if (isRight) enemy.x += 3; 
+            else enemy.x -= 3;
+        /*} else if (rnd < 0.85) {
+            enemy.patrolDir = isRight ? 'left' : 'right';
+            enemy.direction = enemy.patrolDir;*/
+        }
+    }
+}
 
-                    } else {
-                        // ==========================================
-                        // 運命③【確率15%】：まさかの完全スルー（そのまま落下）のドジっ子属性！どんくさギャング崩壊！
-                        // ==========================================
-                        // 💡 ジャンプも反転もしないから、そのまま歩くスピードのまま穴にポチャリと落ちていきます（笑）
-                        console.log("🎲【ギャングAI】穴を発見……って、うわぁぁぁ（そのまま落下）");
-                    }
-                }
-            }
-
-            // 物理演算（重力・壁衝突押し戻し）
+            // 物理演算
             applyPhysicsToObj(enemy);
 
-            // 【バックアップ安全装置】何かに引っかかって進めなくなっていたら反転
-            // 🌟 3階の段差の手前（X=275〜305）にいる時は、ジャンプで超える最中だから反転の割り込みを禁止するわ！
+            // バックアップ安全装置
             if (Math.abs(enemy.x - oldX) < 0.1 && enemy.vy === 0) {
                 if (!(enemy.x + 8 >= 275 && enemy.x + 8 <= 305)) {
                     enemy.patrolDir = (enemy.patrolDir === 'right') ? 'left' : 'right';
@@ -2155,6 +2217,9 @@ function updateAnimation() {
             // 🧭 【ハシゴ交差点のチェック条件】
             if (enemy.ignoreLadderTimer <= 0) {
                 for (let lad of CLIMB_LADDERS) {
+                    // 🧠【最重要セーフティ】記憶している直前のハシゴと同じ場所なら、交差判定を完全にスルーする！
+                    if (lad.x === enemy.lastLadderX) continue;
+
                     if (Math.abs((enemy.x + 8) - (lad.x + 8)) <= 1.0) {
                         if (enemyFootY >= lad.top - 4 && enemyFootY <= lad.bottomY + 4) {
                             
@@ -2185,55 +2250,41 @@ function updateAnimation() {
             }
         }
         // ==================================================================
-        // 🔫 【 4. 銃撃状態（足を止めて狙いを定め、1.5秒後にぶっ放す！）】
+        // 🔫 【 4. 銃撃状態 】
         // ==================================================================
-    else if (enemy.state === 'gun') {
-        enemy.vy = 0; // 足を完全に固定して狙いを定めるわ！
-        
-        // 1️⃣ まだ弾を撃っていない時（カウントダウン中）
-        if (enemy.gunTimer > 0) {
-            enemy.gunTimer--; // 1.5秒（90フレーム）に向かって減算
-        }
+        else if (enemy.state === 'gun') {
+            enemy.vy = 0; 
+            if (enemy.gunTimer > 0) enemy.gunTimer--;
 
-        // 2️⃣ カウントダウンがゼロになった『その瞬間』にぶっ放す！！
-        if (enemy.gunTimer === 0) {
-            // 💥【ピストルの弾丸生成ロジック！】
-            let bulletVx = (enemy.direction === 'right') ? 3 : -3;
-            
-            enemyBullets.push({
-                x: (enemy.direction === 'right') ? enemy.x + 20 : enemy.x - 4,
-                y: enemy.y + 3,
-                vx: bulletVx,
-                active: true
-            });
-
-            pistolSE.currentTime = 0; 
-            pistolSE.play();
-
-            // 💡【ここがルナの工夫その①❤️】
-            // 撃った瞬間にパトロールに戻さず、タイマーをさらに「マイナス15（約0.25秒）」までカウントダウンさせるわ！
-            enemy.gunTimer = -15; 
-        }
-
-        // 3️⃣【新設❤️】弾を撃った後の「残心（構えキープ）」タイム！
-        if (enemy.gunTimer < 0) {
-            enemy.gunTimer++; // 0に向かって戻していくわよ
-
-            // 💡 マイナスから増えて、ちょうど「0」になったら、ついに銃撃モードを完全終了！
             if (enemy.gunTimer === 0) {
-                enemy.state = 'patrol'; 
-                enemy.patrolDir = (enemy.direction === 'right') ? 'left' : 'right'; // 撃ち終わったら反転して歩き出す
-                enemy.direction = enemy.patrolDir;
-                enemy.gunCooldownTimer = 180; // 次に撃つまでの3秒間のクールダウン
+                let bulletVx = (enemy.direction === 'right') ? 3 : -3;
+                enemyBullets.push({
+                    x: (enemy.direction === 'right') ? enemy.x + 20 : enemy.x - 4,
+                    y: enemy.y + 3,
+                    vx: bulletVx,
+                    active: true
+                });
+                pistolSE.currentTime = 0; 
+                pistolSE.play();
+                enemy.gunTimer = -15; 
+            }
+
+            if (enemy.gunTimer < 0) {
+                enemy.gunTimer++; 
+                if (enemy.gunTimer === 0) {
+                    enemy.state = 'patrol'; 
+                    enemy.patrolDir = (enemy.direction === 'right') ? 'left' : 'right'; 
+                    enemy.direction = enemy.patrolDir;
+                    enemy.gunCooldownTimer = 180; 
+                }
             }
         }
-    }
-
 
     } else {
         enemy.state = 'patrol';
         enemy.isClimbing = false;
         enemy.ignoreLadderTimer = 0;
+        enemy.lastLadderX = -999; // 気絶したり死んだら記憶消去❤️
         applyPhysicsToObj(enemy);
     }
 
@@ -2430,24 +2481,22 @@ bullets.forEach(b => {
 function checkCollision() {
     if (enemy.isDead) return;
     
-    // 1. ギャングの体の範囲を定義
-    const eLeft = enemy.x;
-    const eRight = enemy.x + 12; 
-    const eTop = enemy.y; 
-    const eBottom = enemy.y + 21; 
+    // 1. ギャングの体の範囲を定義（マイキーへの接触ダメージ用：元の数値を完全維持！）
+    const eLeft = enemy.x - 10;
+    const eRight = enemy.x + 10; 
+    const eTop = enemy.y + 3; 
+    const eBottom = enemy.y + 12; 
 
-    const playerLeft = player.x + 4;
-    const playerRight = player.x + 12;
+    const playerLeft = player.x - 10;
+    const playerRight = player.x + 10;
     const playerTop = player.y + 3;
-    const playerBottom = player.y + 21;
+    const playerBottom = player.y;
 
-    // 💖【この定義はキックの判定で使うから、絶対このまま残すわよ！】
+    // 💖【この定義はキックの判定で使う】
     const isLevelWithEnemy = (player.y + 21 > eTop + 5) && (player.y < eBottom);
 
 
-
-
-    // 💡 2. マイキーとギャングが重なったかチェック！（すり抜けダメージ）
+    // 💡 2. マイキーとギャングが重なったかチェック！（すり抜けダメージ：eLeft/eRightを使うから範囲は広がらない❤️）
     if (playerRight > eLeft && playerLeft < eRight &&
         playerBottom > eTop && playerTop < eBottom) {
         
@@ -2459,6 +2508,27 @@ function checkCollision() {
             player.damageTimer = 100;  // 60フレーム（約1秒間）のすり抜け無敵モードに突入！
             
             if (player.hp < 0) player.hp = 0;
+        }
+    }
+
+    // 🌟 3. 【新設】マイキーのキック命中判定（ここにあきくんの教科書的なif文を入れるわよ！）
+    if (player.isAttacking && isLevelWithEnemy && !enemy.isStunned && !enemy.isDead) {
+        let attackX;
+
+        if (player.direction === 'right') {
+            // 右向きキック：右側にしっかり届くように +12 から +24 にリーチを伸ばす❤️
+            attackX = player.x + 24;
+        } else {
+            // 左向きキック：基準点から左へ12pxのリーチ！
+            attackX = player.x - 12;
+        }
+
+        // 💡 命中チェック（キックの先端がギャングの体に重なっているか）
+        // 接触ダメージ用の eLeft と eRight をそのまま標的にするから、これで右向きも吸い込まれるように当たるわ！
+        if (attackX > eLeft && attackX < eRight) {
+            enemy.isStunned = true;
+            enemy.respawnTimer = 180;
+            score += SCORE_TABLE.ENEMY_GANG;
         }
     }
 
@@ -2478,7 +2548,7 @@ function checkCollision() {
 
     // --- 4. 攻撃判定（高さ制限付き：キックの処理） ---
     if (player.isAttacking && !player.hasPachinko) {
-        const attackX = (player.direction === 'right') ? player.x + 16 : player.x - 10;
+        const attackX = (player.direction === 'right') ? player.x + 12 : player.x - 12;
         
         // 💡 上で残しておいた isLevelWithEnemy をここで使っているから、エラーにならずにキックできるわ！
         if (attackX > eLeft && attackX < eRight && isLevelWithEnemy) {
@@ -2854,9 +2924,10 @@ function checkDiamondCollision() {
 
         if (dist < 12) {
             dm.isTaken = true; // 🌟 ステージ上のこのダイヤは「取得済み」にして二度と復活させない！
-            
+
             // 🎒 ポケットのダイヤを1個増やすわよ❤️
             player.collectedDiamonds = (player.collectedDiamonds || 0) + 1;
+            score += SCORE_TABLE.ITEM_DIAMOND;
 
             if (typeof keySE !== 'undefined') {
                 keySE.currentTime = 0;
@@ -2913,6 +2984,7 @@ function checkExplosion() {
                 
                 // 🐭💥 注文通り、キックやパチンコと100%同じ「煙（die）モード」へ美しく移行！
                 chuta.state = 'die';
+                score += SCORE_TABLE.ENEMY_CHUTA;
                 chuta.dieTimer = 0; 
                 chuta.animeFrame = 2; // smoke2を指定
                 
@@ -2968,6 +3040,7 @@ function checkGateWall() {  // ゴールゲート あたり判定
             player.vx = 0;           
             player.vy = 0;
             player.isMoving = false; 
+
         }
 
         const playerMid = player.x + 8;
@@ -3163,23 +3236,26 @@ function checkChutaCollisions() {//チュー太のあたり判定
 
         const isLevelWithChuta = (player.y + 21 > cTop + 2) && (player.y < cBottom);
 
-        // 通常衝突
-        /*if (isLevelWithChuta && player.x + 12 > cLeft && player.x < cRight) {
-            if (player.direction === 'right') player.x = cLeft - 12;
-            else player.x = cRight;
-        }*/
 
         // 🌟【キック攻撃命中時の処理】
         if (player.isAttacking && !player.hasPachinko) {
-            const attackX = (player.direction === 'right') ? player.x + 16 : player.x - 10;
+            let attackX;
+
+            if (player.direction === 'right') {
+                // 右向きキック：バグっていた記述を直して、ギャングと同じく +24 にリーチを伸ばすわ❤️
+                attackX = player.x + 24;
+            } else {
+                // 左向きキック：基準点から左へ12pxのリーチ！
+                attackX = player.x - 12;
+            }
             
+            // 💡 接触用の cLeft / cRight は弄らないから、ダメージ範囲は狭いまま安全よ❤️
             if (attackX > cLeft && attackX < cRight && isLevelWithChuta) {
                 // 🐭💥 すぐ消さずに、死亡演出モード（大きい煙）へ妖艶に移行！！
                 chuta.state = 'die';
+                score += SCORE_TABLE.ENEMY_CHUTA;
                 chuta.dieTimer = 0; 
                 chuta.animeFrame = 2; // smoke2を指定
-                
-                // (※即時ドロップではなく煙が晴れてから拾わせるから、ここでの加算は消去したわ❤️)
             }
         }
 
@@ -3196,6 +3272,7 @@ function checkChutaCollisions() {//チュー太のあたり判定
                         // 🐭💥 キックのロジックと100%同じ！
                         // すぐに死なせずに、死亡演出モード（大きい煙）へ妖艶に移行！！❤️
                         chuta.state = 'die';
+                        score += SCORE_TABLE.ENEMY_CHUTA;
                         chuta.dieTimer = 0; 
                         chuta.animeFrame = 2; // smoke2を指定して煙に変身させるの！
                     }
@@ -3220,9 +3297,17 @@ function checkGontaCollisions() {
         // 🦵 1. 【キック攻撃の命中判定】
         // ========================================================
         if (player.isAttacking && !player.hasPachinko) {
-            // マイキーの向きに合わせて足の届くX座標を計算
-            const attackX = (player.direction === 'right') ? player.x + 16 : player.x - 10;
+            let attackX;
+
+            if (player.direction === 'right') {
+                // 右向きキック：ギャング、チュー太と合わせて +24 にリーチを伸ばすわ❤️
+                attackX = player.x + 24;
+            } else {
+                // 左向きキック：基準点から左へ12pxのリーチ！
+                attackX = player.x - 12;
+            }
             
+            // 💡 接触用の cLeft / cRight は元の定義をそのまま使うから、難易度は変わらず安全よ❤️
             if (attackX > cLeft && attackX < cRight && isLevelWithGonta) {
                 // 💥 ゴン太にキックがヒット！！！専用のダメージ処理へ❤️
                 hurtGonta(gonta);
@@ -3252,6 +3337,7 @@ function checkGontaCollisions() {
 function hurtGonta(gonta) {
     // 🐭💥 すぐ消さずに、死亡・変身演出モード（煙）へ妖艶に移行！！
     gonta.state = 'die';
+    score += SCORE_TABLE.ENEMY_GONTA;
     gonta.dieTimer = 0; 
     gonta.animeFrame = 2; // smoke2（大きい煙ボフッ！）を指定
     
@@ -3275,6 +3361,7 @@ function checkItemBagCollision() {
 
         if (dist < 12) {
             it.isTaken = true; // 🌟 画面の袋を消すフラグ！
+            score += SCORE_TABLE.ITEM_BAG;
 
             // 🎒【ここがあきくんの核となるアイデア！】
             // 拾った袋の中身（content）に合わせて、マイキーの装備フラグをONにするわ！
