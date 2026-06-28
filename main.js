@@ -27,6 +27,11 @@ titleImg1.src = 'title2.jpg'; // 1枚目：劇画調の待機画面
 const titleImg2 = new Image();
 titleImg2.src = 'title.png';  // 2枚目：スライドインするメインロゴ画面
 
+const clearImage = new Image();
+clearImage.src = 'continue.webp'; // 
+
+
+
 // 🎬 タイトル演出コントロール用
 let titleStage = 1;         // 1: 劇画待機, 2: スタート後のスライドイン中
 let titleSlideX = CONFIG.CAMERA_W; // スライド画像の初期X位置（画面の左外側）
@@ -162,6 +167,7 @@ let timerFrameCount = 0;
 let isTimeCountingDown = false;  // 高速カウントダウン中かどうかのフラグ
 let timeScoreTickTimer = 0;      // 数字を減らすスピードを調整するタイマー
 
+let gameState = 'title';
 
 // 🌟 救出メッセージ用のオブジェクト
 let goonieText = {
@@ -1166,6 +1172,54 @@ function update(currentTime) {
         ctx.translate(0, 35);               // UIエリア（35px分）を下へズラすッ❤️
     }
 
+if (typeof gameState !== 'undefined' && gameState === 'stage1_clear') {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        // ⬛ 画面を真っ暗にする
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (clearImage.complete) {
+            // 🌟 画面の高さの70%に収まるように画像を縮小して真ん中に配置
+            const maxH = canvas.height * 0.7; 
+            const scale = maxH / clearImage.height;
+            const drawW = clearImage.width * scale;
+            const drawH = clearImage.height * scale;
+
+            const imgX = (canvas.width - drawW) / 2;
+            const imgY = (canvas.height - drawH) / 2; // 🖼️ 画像自体も画面の上下真ん中にするよ！
+
+            ctx.drawImage(clearImage, imgX, imgY, drawW, drawH);
+
+            // =========================================================================
+            // ✍️ 【文字を画面の真ん中に重ねて表示するよ❤️】
+            // =========================================================================
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // ⬛ 文字が画像に埋もれないように、文字の後ろに半透明の黒い帯を入れるね（映画の字幕風⭐）
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; // 60%の薄暗い黒
+            ctx.fillRect(0, centerY - 50, canvas.width, 100); // 画面横いっぱいの帯
+
+            // ✍️ テキストの設定（フォントサイズはスマホで見やすいように大きめの20px！）
+            ctx.font = 'bold 20px "Courier New", Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle'; // 縦の位置も真ん中基準にするお守り！
+
+            // 1行目：「STAGE 1 CLEAR」
+            ctx.fillStyle = '#ffcc00'; // ゴージャスなグーニーズ・ゴールド❤️
+            ctx.fillText("STAGE 1 CLEAR", centerX, centerY - 20);
+
+            // 2行目：「to be continued...」
+            ctx.fillStyle = '#ffffff'; // パキッとした白
+            ctx.font = 'italic 16px "Courier New", Arial, sans-serif'; // 少しフォントを変えてオシャレに
+            ctx.fillText("to be continued...", centerX, centerY + 20);
+        }
+
+        requestAnimationFrame(update);
+        return; 
+    }
+
     // ------------------------------------------------------------------
     // 🎨 【常時描画】画面をフリーズさせないための絶対防衛線
     // ------------------------------------------------------------------
@@ -1380,6 +1434,8 @@ function handleInput() {
                 player.isAutoMoving = false;
                 player.isMoving = false;
                 player.autoTargetX = 50; 
+                gameState = 'stage1_clear';
+                
             }
         }
         return; 
@@ -3846,6 +3902,39 @@ function drawUI() {
 
 }
 
+function drawClearImage(){
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        // ⬛ 1. 画面全体を真っ黒に塗りつぶしてゲーム画面を完全消去！
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 🗺️ 2. 地図の画像を画面中央に描画（サイズは好みに合わせて調整してね⭐）
+        const imgWidth = 240;
+        const imgHeight = 360; 
+        const imgX = (canvas.width - imgWidth) / 2;
+        const imgY = 40; 
+        if (clearImage.complete) { // 画像の読み込み完了を確認
+            ctx.drawImage(clearImage, imgX, imgY, imgWidth, imgHeight);
+        }
+
+        // ✍️ 3. テキスト表示
+        ctx.font = '16px "Courier New", Courier, monospace';
+        ctx.textAlign = 'center';
+
+        // 「STAGE 1 CLEAR」
+        ctx.fillStyle = '#ffcc00'; 
+        ctx.fillText("STAGE 1 CLEAR", canvas.width / 2, imgY + imgHeight + 30);
+
+        // 「to be continued...」
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText("to be continued...", canvas.width / 2, imgY + imgHeight + 55);
+
+        // 🛑 下にある通常のゲーム描画（drawBackgroundなど）を一切通さずに、ここでループを回して終了！
+        requestAnimationFrame(update);
+        return;
+};
+
 
 function initJailContents() {
     // 鍵3つと、まだ見ぬグーニー1人
@@ -4038,6 +4127,7 @@ function handleTitleInput() {
 
                 // 🧱 ステージ1のマップやキャラクターを真っ新に生成！
                 initJailContents(); 
+                gameState = 'gameStage1';
 
                 if (typeof drawUI === 'function') {
                     drawUI(); // UIエリアをその場で強制的に再描画！
